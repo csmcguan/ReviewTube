@@ -1,14 +1,21 @@
-import axios from "axios";
-import './App.css';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import Login from './components/Login';
+import Home from './components/Home';
+import { useState } from 'react';
 
-function App() {
+export default function App() {
+  const [user, setUser] = useState(null);
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <button>Button</button>
-      </header>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Login onLogin={setUser} />} />
+        <Route
+          path="/home"
+          element={user ? <Home user={user} /> : <Navigate to="/" replace />}
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
-
-export default App;
