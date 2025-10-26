@@ -1,18 +1,20 @@
-const express = require("express");
-const cors = require("cors");
-const morgan = require("morgan");
+import express from "express";
+import cors from "cors";
+import path from "path";
+import morgan from "morgan"
+import {fileURLToPath} from "url";
+
 const app = express();
 const PORT = process.env.PORT || 5000;
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-
-
-app.use(cors({ origin: 'http://localhost:3000' }));
 app.use(express.json());
 app.use(morgan("dev"));
 
-app.get("/", (req, res) => {
-    res.send("hello!!!!!!!!!!!!");
-});
+if (process.env.NODE_ENV == "development") {
+  app.use(cors({ origin: 'http://localhost:3000' }));
+}
 
 app.post("/api/login", (req, res) => {
   const { email, password } = req.body || {};
@@ -31,3 +33,10 @@ app.listen(PORT, () => {
     console.log(`server listening on port ${PORT}`);
 });
 
+// serve for prod
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "../client/build")));
+  app.get("*", (rq, res) =>
+    res.sendFile(path.join(__dirname, "../client/build/index.html"))
+  );
+}
