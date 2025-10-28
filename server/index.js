@@ -17,7 +17,7 @@ app.post("/api/login", (req, res) => {
   const { email, password } = req.body || {};
 
   //Test demo credentials
-  if (email === "abeIrf@gmail.com" && password === "demo123") {
+  if (email === "abeirf@gmail.com" && password === "demo123") {
     return res.json({ ok: true, user: { id: 1, name: "Abyan", email } });
   }
 
