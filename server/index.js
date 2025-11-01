@@ -1,33 +1,46 @@
 const express = require("express");
 const cors = require("cors");
-const morgan = require("morgan");
+const path = require("path");
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-
-
-app.use(cors({ origin: 'http://localhost:3000' }));
 app.use(express.json());
-app.use(morgan("dev"));
+app.use(express.urlencoded({extended: true}));
 
-app.get("/", (req, res) => {
-    res.send("hello!!!!!!!!!!!!");
-});
+// run dev
+if (process.env.NODE_ENV == "development") {
+  app.use(cors({ origin: 'http://localhost:3000' }));
+}
 
 app.post("/api/login", (req, res) => {
   const { email, password } = req.body || {};
 
   //Test demo credentials
-  if (email === "abeIrf@gmail.com" && password === "demo123") {
+  if (email === "abeirf@gmail.com" && password === "demo123") {
     return res.json({ ok: true, user: { id: 1, name: "Abyan", email } });
   }
 
   return res.status(401).json({ ok: false, error: "Invalid credentials" });
 });
-app.get("/api/ping", (req, res) => {
+
+app.get("/api/ping", (_req, res) => {
   res.json({ ok: true, msg: "pong" });
-});//Testing if server is listening to client requests
+});
+
+// serve for prod
+if (process.env.NODE_ENV === "production") {
+  const buildPath = path.join(__dirname, "../client/build");
+  app.use(express.static(buildPath));
+  app.use((req, res, next) => {
+    if (req.method !== "GET") {
+      return (next());
+    }
+    res.sendFile(path.join(buildPath, "index.html"));
+  });
+}
+
+//Testing if server is listening to client requests
 app.listen(PORT, () => {
     console.log(`server listening on port ${PORT}`);
 });
-
