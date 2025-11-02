@@ -7,20 +7,34 @@ class DBManager {
         }
 
         DBManager.instance = this;
+        
+        //this.initDatabase();
 
         return this;
     }
 
     // getter functions for reviewtube database
     // returns strings
-    static get dbURL()
+    dbURL()
     {
         return "mongodb://localhost:27017/";
     }
 
-    static get dbName()
+    dbName()
     {
         return "reviewtube";
+    }
+
+    // getter functions for reviewtube collections
+    // returns strings
+    collUser()
+    {
+        return "userdata";
+    }
+
+    initDatabase()
+    {
+        this.createCollection(collUser());
     }
 
     // checks if collection exists in reviewtube database
@@ -87,4 +101,17 @@ class DBManager {
         });
     }
 
+    createUserEntry(_username, _email, _password, _profileinfo, _birthdate)
+    {
+        const userEntry = {};
+        
+        userEntry.username = _username;
+        userEntry.email = _email;
+        userEntry.password = _password;
+        userEntry.profileinfo = _profileinfo;
+        userEntry.birthdate = _birthdate;
+        userEntry.dateCreated = new Date().toLocaleDateString();
+
+        this.insertCollectionEntry(this.collUser(), userEntry);
+    }
 }
