@@ -1,5 +1,6 @@
+const { MongoClient, ServerApiVersion } = require("mongodb");
+
 class DBManager {
-    
     // Singleton constructor
     constructor() {
         if (DBManager.instance) {
@@ -7,23 +8,68 @@ class DBManager {
         }
 
         DBManager.instance = this;
-        
-        //this.initDatabase();
+
+        this.initialize();
 
         return this;
     }
 
-    // getter functions for reviewtube database
-    // returns strings
-    dbURL()
-    {
-        return "mongodb://localhost:27017/";
+    // Initialize Database Manager 
+    async initialize()
+    {   
+        await this.createClient();
+
+        await this.connectClient();
+        this.database = this.client.db("reviewtube");
+
+        await this.checkCollections();
     }
 
-    dbName()
+    // create Mongo Client
+    async createClient()
     {
-        return "reviewtube";
+        const URL = "mongodb://localhost:27017/";
+        this.client = new MongoClient(URL, {
+                serverApi: {
+                    version: ServerApiVersion.v1,
+                    strict: true,
+                    deprecationErrors: true,
+                }
+            }
+        );
     }
+
+    // connect client to Mongo Database
+    async connectClient()
+    {
+        await this.client.connect();
+        console.log("Connected to Database");
+    }
+
+    // disconnect client to Mongo Database
+    async disconnectClient()
+    {
+        await this.client.close();
+        console.log("Disconnected to Database");
+    }
+
+    // check if reviewtube collections exists and if not create them
+    async checkCollections()
+    {
+        const collections = [this.collUser(), this.collReview()];
+        const dbCollections = await this.database.listCollections().toArray();
+        
+        for (var i = 0; i < collections.length; i++) 
+        { 
+            var index = dbCollections.findIndex(e => e.name === collections[i]);
+            if(index === -1) // if collection doesn't exist create it
+            {
+                await this.database.createCollection(collections[i]);
+                console.log("Creating Database")
+            }
+        }
+    }
+
 
     // getter functions for reviewtube collections
     // returns strings
@@ -32,76 +78,29 @@ class DBManager {
         return "userdata";
     }
 
-    initDatabase()
+    collReview()
     {
-        this.createCollection(collUser());
+        return "reviewdata";
     }
-
-    // checks if collection exists in reviewtube database
-    // takes in a string collection name
-    // returns a boolean if collection exists
-    checkIfCollectionExists(_collection)
-    {
-        MongoClient.connect(dbURL(), function(err, db) 
-        {
-            if (err) throw err;
-            let dbo = db.db(dbName());
-            return dbo.ListCollectionNames().ToList().Contains(_collection);
-        });
-    }
-
-    // creates a collection in the reviewtube database
-    // takes in a collection name
-    createCollection(_collection)
-    {
-        var exists = this.checkIfCollectionExists(_collection);
-        if (!exists)
-        {
-            MongoClient.connect(dbURL(), function(err, db) 
-            {
-                if (err) throw err;
-                let dbo = db.db(dbName());
-                dbo.createCollection(_collection, function(err, res) {
-                    if (err) throw err;
-                    db.close();
-                });
-            });
-        }
-    }
-
 
     // inserts entry into collection
     // takes in a collection name string and entry object
-    insertCollectionEntry(_collection, _entry)
+    async insertCollectionEntry(_collection, _entry)
     {
-        MongoClient.connect(dbURL(), function(err, db) 
-        {
-            if (err) throw err;
-            let dbo = db.db(dbName());
-            dbo.collection(_collection).insertOne(_entry, function(err, res) {
-                if (err) throw err;
-                db.close();
-            });
-        });
+        await this.database.collection(_collection).insertOne(_entry);
     }
 
     // outputs query to a collection
     // takes in a collection name string and a query object
     // returns an array of objects matching the query
-    queryCollection(_collection, _query)
+    async queryCollection(_collection, _query)
     {
-        MongoClient.connect(dbURL(), function(err, db) {
-            if (err) throw err;
-            let dbo = db.db(dbName());
-            dbo.collection(_collection).find(_query).toArray(function(err, result) {
-                if (err) throw err;
-                db.close();
-                return result;
-            });
-        });
+        return await this.database.collection(_collection).find(_query).toArray();
     }
 
-    createUserEntry(_username, _email, _password, _profileinfo, _birthdate)
+    // creates a user entry and enters into user collection
+    // takes in username string, email string, password string, profile info string, birthday Date
+    async createUserEntry(_username, _email, _password, _profileinfo, _birthdate)
     {
         const userEntry = {};
         
@@ -109,9 +108,12 @@ class DBManager {
         userEntry.email = _email;
         userEntry.password = _password;
         userEntry.profileinfo = _profileinfo;
-        userEntry.birthdate = _birthdate;
+        userEntry.birthdate = _birthdate.toLocaleDateString();
         userEntry.dateCreated = new Date().toLocaleDateString();
 
-        this.insertCollectionEntry(this.collUser(), userEntry);
+        await this.insertCollectionEntry(this.collUser(), userEntry);
     }
 }
+
+
+module.exports.DBManager = DBManager;
