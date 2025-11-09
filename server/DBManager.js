@@ -26,7 +26,7 @@ class DBManager {
 
         //await this.createUserEntry("Abyan", "abeirf@gmail.com", "demo123","", new Date());
 
-        await this.verifyUser("abeirf@gmail.com", "demo123");
+        //await this.verifyUser("abeirf@gmail.com", "demo123");
     }
 
     // create Mongo Client
