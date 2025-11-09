@@ -23,6 +23,10 @@ class DBManager {
         this.database = this.client.db("reviewtube");
 
         await this.checkCollections();
+
+        //await this.createUserEntry("Abyan", "abeirf@gmail.com", "demo123","", new Date());
+
+        await this.verifyUser("abeirf@gmail.com", "demo123");
     }
 
     // create Mongo Client
@@ -112,6 +116,32 @@ class DBManager {
         userEntry.dateCreated = new Date().toLocaleDateString();
 
         await this.insertCollectionEntry(this.collUser(), userEntry);
+    }
+
+    // outputs email query to a user collection
+    // takes in a collection name string and a query object
+    // returns an array of objects matching the query
+    async getUserData(_email)
+    {
+        let query = {email : _email};
+        var arr = await this.queryCollection(this.collUser(), query);
+        if ( arr != null)
+        {
+            return arr[0];
+        }
+    }
+
+    async verifyUser(_email, _password)
+    {
+        var user = await this.getUserData(_email);
+        if(user != null)
+        {
+            return (user.password === _password);
+        }
+        else
+        {
+            return false;
+        }
     }
 }
 
