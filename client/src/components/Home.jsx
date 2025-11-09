@@ -1,21 +1,5 @@
-/*export default function Home({ user }) {
-  return (
-    <div style={{
-      minHeight: '100vh', background: '#0f0f10', color: '#f1f1f1',
-      padding: '2rem'
-    }}>
-      <h2 style={{ marginTop: 0 }}>Welcome, {user?.name || 'User'}!</h2>
-      <p>The Home feed. Currently Showing: </p>
-      <ul>
-        <li>Recent friend activity</li>
-        <li>Latest reviews</li>
-        <li>A search bar placeholder</li>
-      </ul>
-    </div>
-  );
-}*/
-// src/components/Home.jsx
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const COLORS = {
   bg: '#0f0f10',
@@ -27,64 +11,69 @@ const COLORS = {
   soft: '#151619',
 };
 
-
-async function ytSearch(query, pageToken) {
-  const key = process.env.REACT_APP_YT_API_KEY;//Youtube API Key
-  if (!key) throw new Error('Missing REACT_APP_YT_API_KEY');
-  const params = new URLSearchParams({
-    key,
-    q: query,
-    part: 'snippet',
-    maxResults: 8,
-    type: 'video',
-    ...(pageToken ? { pageToken } : {}),
-  });
-  const res = await fetch(`https://www.googleapis.com/youtube/v3/search?${params}`);
-  if (!res.ok) throw new Error('YouTube API error');
-  return res.json();
-}
-
-export default function Home({ user }) {
+export default function Home({ user, onLogout }) {
   const [query, setQuery] = useState('');
-  const [videos, setVideos] = useState([]);
-  const [nextPage, setNextPage] = useState(null);
-  const [loading, setLoading] = useState(false);
+  // eslint-disable-next-line no-unused-vars
   const [err, setErr] = useState('');
-  const [activeVideoId, setActiveVideoId] = useState(null);
+  const navigate = useNavigate();
+  const [hoverLogout, setHoverLogout] = useState(false);    
+  const [hoverProfile, setHoverProfile] = useState(false);
+  const [hoverSearch, setHoverSearch] = useState(false);
+  function readJSON(k, d) { try { return JSON.parse(localStorage.getItem(k) || JSON.stringify(d)); } catch { return d; } }
+  function writeJSON(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
+  const [feed, setFeed] = useState([]); // array of reviews for the feed
+  // who the user follows (mock). Backend will compute this.
+ const FOLLOWED_USER_IDS = ['u1', 'u2'];       // Hardcoded followed users
+ //const FOLLOWED_CHANNEL_IDS = ['UCxxxx', 'UCyyyy']; // optional future use
+ const readLikes = () => readJSON('rt_likes', {});
+ const writeLikes = (m) => writeJSON('rt_likes', m);
+ const likeCount = (id) => (readLikes()[id] || []).length;
+ const hasLiked = (id) => {
+  if (!user?.id) return false;
+  const arr = readLikes()[id] || [];
+  return arr.includes(user.id);
+ };
+ function toggleLike(reviewId) {
+   if (!user?.id) return;
+   const map = readLikes();
+   const arr = map[reviewId] || [];
+   const i = arr.indexOf(user.id);
+   if (i >= 0) arr.splice(i, 1); else arr.push(user.id);
+   map[reviewId] = arr;
+   writeLikes(map);
+   // refresh counts
+   setFeed(f => [...f]);
+ }
 
-  async function runSearch(reset = true) {
-    if (!query.trim()) return;
-    try {
-      setErr('');
-      setLoading(true);
-      const data = await ytSearch(query, reset ? undefined : nextPage);
-      const items = (data.items || []).map((it) => ({
-        id: it.id.videoId,
-        title: it.snippet.title,
-        channel: it.snippet.channelTitle,
-        thumb: it.snippet.thumbnails.medium?.url || it.snippet.thumbnails.default?.url,
-        publishedAt: new Date(it.snippet.publishedAt).toLocaleDateString(),
-      }));
-      setVideos((v) => (reset ? items : [...v, ...items]));
-      setNextPage(data.nextPageToken || null);
-      if (reset && items[0]) setActiveVideoId(items[0].id);
-    } catch (e) {
-      setErr(e.message);
-    } finally {
-      setLoading(false);
-    }
+
+ // shape of a review (local): { id, author:{id,name}, videoId, videoTitle, rating, text, createdAt }
+ function seedDemoIfEmpty() {
+   const current = readJSON('rt_reviews', []);
+   if (current.length) return;
+   const now = Date.now();
+   const demo = [
+     { id: 'r1', author: { id: 'u1', name: 'Alex' },   videoId: 'vid1', videoTitle: 'Intro to Mechanics',   rating: 4, text: 'Great explanation! Really improved my concepts.', createdAt: new Date(now - 1000*60*40).toISOString() },
+     { id: 'r2', author: { id: 'u2', name: 'Colman' }, videoId: 'vid2', videoTitle: 'CinemaWins: Inception', rating: 5, text: 'Interesting premise!', createdAt: new Date(now - 1000*60*90).toISOString() },
+   ];
+   writeJSON('rt_reviews', demo);
+ }
+ 
+ useEffect(() => {
+   // For backend replace with backend GET /feed
+   seedDemoIfEmpty();
+   const all = readJSON('rt_reviews', []);
+   const filtered = all
+     .filter(r => FOLLOWED_USER_IDS.includes(r.author?.id) /* || FOLLOWED_CHANNEL_IDS includes r.channelId */)
+     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+   setFeed(filtered);
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, []);
+
+
+  function handleLogout() {
+    if (onLogout) onLogout();
+    navigate('/');                                              
   }
-
-  //Preload a demo vid search on first load, can search manually afterwards
-  useEffect(() => {
-    setQuery('Cinemawins Inception');
-  }, []);
-
-  useEffect(() => {
-    if (query) runSearch(true);
-    //eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query]);
-
   const layout = useMemo(() => ({
     shell: {
       minHeight: '100vh',
@@ -156,10 +145,24 @@ export default function Home({ user }) {
           ReviewTube <span style={{ color: COLORS.dim, fontSize: 12 }}>alpha</span>
         </div>
         <div style={layout.sideItem(true)}>Home</div>
-        <div style={layout.sideItem(false)}>Search</div>
+        <div style={{ ...layout.sideItem(false), background: hoverSearch ? COLORS.card : 'transparent', transition: 'background .2s' }} onMouseEnter={() => setHoverSearch(true)} onMouseLeave={() => setHoverSearch(false)}
+          onClick={() => navigate('/search')} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && navigate('/search')}
+          >Search </div>
         <div style={layout.sideItem(false)}>Review</div>
-        <div style={layout.sideItem(false)}>Profile</div>
-        <div style={layout.sideItem(false)}>Logout</div>
+        <div style={{...layout.sideItem(false), background: hoverProfile ? COLORS.card : 'transparent', transition: 'background 0.2s ease'}}
+          onMouseEnter={() => setHoverProfile(true)}
+          onMouseLeave={() => setHoverProfile(false)}
+          onClick={() => navigate('/profile')}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => e.key === 'Enter' && navigate('/profile')}
+        >
+          Profile
+        </div>
+        <div style={{...layout.sideItem(false),
+        background: hoverLogout ? COLORS.card : 'transparent',
+        transition: 'background 0.2s ease'
+        }} onMouseEnter={() => setHoverLogout(true)} onMouseLeave={() => setHoverLogout(false)} onClick={handleLogout} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && handleLogout()}>Logout</div>
 
         <div style={{ marginTop: 'auto', paddingTop: 8, borderTop: `1px solid ${COLORS.border}`, display: 'flex', gap: 10, alignItems: 'center' }}>
           <div style={{ width: 36, height: 36, borderRadius: 999, background: COLORS.card, display: 'grid', placeItems: 'center', fontWeight: 700 }}>
@@ -172,7 +175,7 @@ export default function Home({ user }) {
         </div>
       </aside>
 
-      {/* Main */}
+      {/* Main Body */}
       <main style={layout.main}>
         {/* Topbar */}
         <div style={layout.topbar}>
@@ -181,11 +184,20 @@ export default function Home({ user }) {
             placeholder="Search videos or channels…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => (e.key === 'Enter' ? runSearch(true) : null)}
+            onKeyDown={(e) => (e.key === 'Enter' ? navigate(`/search?q=${encodeURIComponent(query.trim())}`) : null)}
           />
-          <button onClick={() => runSearch(true)} style={layout.searchBtn}>
-            {loading ? 'Searching…' : 'Search'}
-          </button>
+          <button
+            onClick={() => navigate(`/search?q=${encodeURIComponent(query.trim())}`)}
+            style={{
+              padding: '10px 16px',
+              borderRadius: 8,
+              border: 'none',
+              background: '#ff0033',
+              color: 'white',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}>Search</button>
+          
           <div style={{ marginLeft: 'auto', fontSize: 13, color: COLORS.dim }}>
             Signed in as <b>{user?.name}</b>
           </div>
@@ -200,59 +212,57 @@ export default function Home({ user }) {
                 <h3 style={{ margin: 0 }}>Home Feed</h3>
                 <span style={{ fontSize: 12, color: COLORS.dim }}>Activity from friends</span>
               </div>
+              {/* Feed of recent reviews from followed users */}
+              <div style={{ display: 'grid', gap: 12, marginTop: 12 }}>
+                {feed.map((r) => (
+                  <div key={r.id} style={{ background: COLORS.soft, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 34, height: 34, borderRadius: 999, background: COLORS.card, display: 'grid', placeItems: 'center', fontWeight: 700 }}>
+                        {(r.author?.name || 'A')[0]}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 700 }}>{r.author?.name}</div>
+                        <div style={{ color: COLORS.dim, fontSize: 12 }}>
+                          reviewed <b>{r.videoTitle || '(video)'}</b> • {new Date(r.createdAt).toLocaleString()}
+                        </div>
+                      </div>
+                    </div>
 
-              {/* Player */}
-              {activeVideoId && (
-                <div style={{ marginTop: 12 }}>
-                  <div style={{ position: 'relative', width: '100%', paddingTop: '56.25%', borderRadius: 10, overflow: 'hidden', border: `1px solid ${COLORS.border}` }}>
-                    <iframe
-                      title="player"
-                      src={`https://www.youtube.com/embed/${activeVideoId}`}
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                      allowFullScreen
-                      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }}
-                    />
-                  </div>
-                </div>
-              )}
+                    <div style={{ marginTop: 8 }}>{r.text}</div>
+                    <div style={{ color: COLORS.dim, fontSize: 12, marginTop: 6 }}>Rating: {'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</div>
 
-              {/* Results */}
-              <div style={layout.list}>
-                {videos.map((v) => (
-                  <div key={v.id} style={layout.vItem} onClick={() => setActiveVideoId(v.id)}>
-                    <img src={v.thumb} alt="" style={layout.thumb} />
-                    <div style={{ padding: 8 }}>
-                      <h4 style={layout.metaTitle}>{v.title}</h4>
-                      <div style={layout.dim}>{v.channel}</div>
-                      <div style={layout.dim}>{v.publishedAt}</div>
+                    <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                      <button
+                        type="button"
+                        onClick={() => toggleLike(r.id)}
+                        style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${COLORS.border}`, background: COLORS.card, color: COLORS.text, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+                      >
+                        {hasLiked(r.id) ? '♥' : '♡'} {likeCount(r.id)}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/review?replyTo=${encodeURIComponent(r.id)}&title=${encodeURIComponent(r.videoTitle || '')}&snippet=${encodeURIComponent(r.text.slice(0, 160))}`)}
+                        style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${COLORS.border}`, background: COLORS.card, color: COLORS.text, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+                      >
+                        💬 Comment
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/review?view=${encodeURIComponent(r.id)}&title=${encodeURIComponent(r.videoTitle || '')}&snippet=${encodeURIComponent(r.text.slice(0, 160))}`)}
+                        style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${COLORS.border}`, background: COLORS.card, color: COLORS.text, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
+                      >
+                        View ▸
+                      </button>
                     </div>
                   </div>
                 ))}
-              </div>
 
-              {err && <div style={{ color: '#ff6b6b', marginTop: 10 }}>{err}</div>}
-
-              {nextPage && (
-                <div style={{ marginTop: 12, display: 'flex', justifyContent: 'center' }}>
-                  <button onClick={() => runSearch(false)} style={{ ...layout.searchBtn, background: COLORS.card, color: COLORS.text, border: `1px solid ${COLORS.border}` }}>
-                    {loading ? 'Loading…' : 'Load more'}
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Recent Reviews placeholder */}
-            <div style={{ ...layout.card, marginTop: 16 }}>
-              <h3 style={{ marginTop: 0 }}>Recent Reviews</h3>
-              
-              <ul style={{ marginTop: 8 }}>
-                <li><b>Colman</b>: Interesting premise! (CinemaWins: Inception)</li>
-                <li><b>Alex</b>: Great explanation! Really improved my concepts. (Intro to Mechanics)</li>
-              </ul>
-            </div>
-
-            <div style={{ textAlign: 'center', color: COLORS.dim, fontSize: 12, marginTop: 10 }}>
-              Alpha Prototype.
+                {!feed.length && (
+                  <div style={{ color: COLORS.dim }}>
+                    No activity yet. Follow people or channels to see reviews here.
+                  </div>
+                )}
+              </div>              
             </div>
           </section>
 

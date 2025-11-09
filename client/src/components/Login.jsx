@@ -1,5 +1,9 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { useEffect } from 'react';
+//import { useNavigate, Link } from 'react-router-dom';
+
+
 
 export default function Login({ onLogin }) {
   const [email, setEmail] = useState('');
@@ -7,6 +11,15 @@ export default function Login({ onLogin }) {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
   const navigate = useNavigate();
+  const [rememberMe, setRememberMe] = useState(false);
+  useEffect(() => {
+    const savedEmail = localStorage.getItem('rt_email');
+    if (savedEmail) {
+      setEmail(savedEmail);
+      setRememberMe(true);
+    }
+  }, []);
+  
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -26,6 +39,9 @@ export default function Login({ onLogin }) {
 
       const data = await res.json();
       onLogin(data.user);
+      localStorage.setItem('rt_user', JSON.stringify(data.user)); 
+      if (rememberMe) localStorage.setItem('rt_email', email);
+      else localStorage.removeItem('rt_email');
       navigate('/home');
     } catch (e) {
       setErr(e.message);
@@ -61,20 +77,28 @@ export default function Login({ onLogin }) {
         />
 
         <label>Password</label>
-        <input
-          type="password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          required
-          style={{
-            width: '95%', marginTop: 6, marginBottom: 16, padding: 10,
-            borderRadius: 8, border: '1px solid #333', background: '#0b0b0c',
-            color: '#f1f1f1'
-          }}
-        />
+        <input 
+        type="password" 
+        value={password} 
+        onChange={e => setPassword(e.target.value)} 
+        required 
+        style={{ 
+          width: '95%', marginTop: 6, marginBottom: 16, padding: 10, 
+          borderRadius: 8, border: '1px solid #333', background: '#0b0b0c', 
+          color: '#f1f1f1' }} 
+          />
 
         {err && <div style={{ color: '#ff6b6b', marginBottom: 10 }}>{err}</div>}
-
+        <label htmlFor="remember" style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+          <input
+            id="remember"
+            type="checkbox"
+            checked={rememberMe}
+            onChange={e => setRememberMe(e.target.checked)}
+            style={{ accentColor: '#ff0033' }}
+          />
+          Remember me
+        </label>
         <button
           type="submit"
           disabled={loading}
@@ -85,6 +109,12 @@ export default function Login({ onLogin }) {
           }}>
           {loading ? 'Signing in…' : 'Sign In'}
         </button>
+        <div style={{ marginTop: 12, textAlign: 'center', fontSize: 14 }}>
+            Don’t have an account?{' '}
+            <Link to="/signup" style={{ color: '#ff5c7a', textDecoration: 'none', fontWeight: 600 }}>
+              Sign up
+            </Link>
+          </div>
       </form>
     </div>
   );
