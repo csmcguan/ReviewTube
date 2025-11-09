@@ -2,6 +2,9 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 
+const {DBManager} = require("./DBManager");
+const dbManager = new DBManager();
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
