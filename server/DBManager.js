@@ -1,6 +1,6 @@
-const { MongoClient, ServerApiVersion } = require("mongodb");
+import { MongoClient, ServerApiVersion } from "mongodb";
 
-class DBManager {
+export class DBManager {
     // Singleton constructor
     constructor() {
         if (DBManager.instance) {
@@ -144,6 +144,3 @@ class DBManager {
         }
     }
 }
-
-
-module.exports.DBManager = DBManager;

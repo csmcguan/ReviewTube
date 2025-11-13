@@ -3,8 +3,8 @@ import cors from "cors";
 import path from "path";
 import apiRouter from "./routes/index.js"
 
-//const {DBManager} = require("./DBManager");
-//const dbManager = new DBManager();
+import {DBManager} from "./DBManager.js";
+const dbManager = new DBManager();
 
 const app = express();
 // Demo in-memory users store (resets when server restarts)- Use until MongoDB is set up
