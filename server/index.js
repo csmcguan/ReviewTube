@@ -1,8 +1,9 @@
-const express = require("express");
-const cors = require("cors");
-const path = require("path");
+import express from "express";
+import cors from "cors";
+import path from "path";
+import apiRouter from "./routes/index.js"
 
-const {DBManager} = require("./DBManager");
+import {DBManager} from "./DBManager.js";
 const dbManager = new DBManager();
 
 const app = express();
@@ -10,6 +11,9 @@ const PORT = process.env.PORT || 5000;
 
 app.use(express.json());
 app.use(express.urlencoded({extended: true}));
+
+// USE OUR API
+app.use("/api", apiRouter);
 
 // run dev
 if (process.env.NODE_ENV == "development") {
@@ -47,7 +51,7 @@ app.post("/api/signup", async(req, res) => {
   await dbManager.createUserEntry(name, email, password, "", new Date());
 
   //Auto-login after signup - Can change if needed
-  return res.json({ ok: true, user: { id: user.id, name: user.name, email: user.email } });
+  return res.json({ ok: true, user: { id: u.id, name: u.name, email: u.email } });
 });
 
 app.get("/api/ping", (_req, res) => {
