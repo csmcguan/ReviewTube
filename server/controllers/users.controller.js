@@ -136,4 +136,21 @@ export const userController = {
             next(err);
         }
     },
+
+    async getUserFeed(req, res, next) {
+        try {
+            const { userId } = req.params;
+            const {startIndex = 0, count = 20} = req.body; // for indexing/pagination
+
+            const feed = await userService.getUserFeed(userId, startIndex, count);
+            if (!feed) {
+                console.error("Feed not found for user:", userId);
+                return res.status(404).json({ ok: false, error: "Feed not found" });
+            }
+            return res.json({ ok: true, feed: feed });
+        } catch (err) {
+            console.error("Get user feed error:", err);
+            next(err);
+        }
+    }
 };

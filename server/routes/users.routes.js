@@ -34,4 +34,7 @@ router.post(
 router.get("/me", userController.getMyProfile);         // current logged-in user
 router.get("/:userId", userController.getUserProfile);  // view another user's profile
 
+// feed
+router.get("/:userId/feed", userController.getUserFeed);
+
 export default router;

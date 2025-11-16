@@ -59,5 +59,10 @@ export const userService = {
     // get a user's profile
     async getProfile(userId) {
         
+    },
+
+    async getUserFeed(userId, startIndex, count) {
+        // once database contains friends, etc.
+        // we will need an algorithm to generate a feed
     }
 };
