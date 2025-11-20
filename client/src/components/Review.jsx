@@ -1,5 +1,9 @@
+/* eslint-disable no-unused-vars */
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { postVideoReview, postReviewComment } from '../services/reviewsApi';
+import { getVideoReviews } from '../services/reviewsApi';
+
 
 const COLORS = {
   bg: '#0f0f10',
@@ -67,7 +71,6 @@ export default function Review({ user, onLogout }) {
 }, [user]);
 
   useEffect(() => {
-    // load video details if a videoId is provided
     (async () => {
       if (videoId) {
         const d = await ytVideoDetails(videoId);
@@ -77,16 +80,33 @@ export default function Review({ user, onLogout }) {
   }, [videoId]);
 
   useEffect(() => {
-    if (!replyToId) return;
-    const all = readJSON('rt_reviews', []);
-    const found = all.find(r => r.id === replyToId);
-    setParentReview(found || null);
-    setComments(loadComments(replyToId));
-    refreshLikes(replyToId);
-    if (found?.videoId && !videoId) {
-      ytVideoDetails(found.videoId).then(d => setSelected(d || { id: found.videoId }));
+  if (!replyToId) return;
+
+  async function loadParentFromBackend() {
+    try {
+      const vid = videoId || selected?.id;
+      if (!vid) return;
+
+      const all = await getVideoReviews({ videoId: vid });
+      const found = all.find(r => String(r._id) === String(replyToId)); // replyToId should be Mongo _id
+
+      setParentReview(found || null);
+      setComments(loadComments(replyToId));  // still using local for comments for now
+      refreshLikes(replyToId);
+
+      if (found?.targetId && !videoId) {
+        ytVideoDetails(found.targetId).then(d =>
+          setSelected(d || { id: found.targetId })
+        );
+      }
+    } catch (err) {
+      console.error("Failed to load parent review:", err);
     }
-  }, [replyToId, videoId, refreshLikes]);
+  }
+
+  loadParentFromBackend();
+}, [replyToId, videoId, selected?.id, refreshLikes]);
+
 
   const layout = useMemo(() => ({
     shell: { minHeight: '100vh', background: COLORS.bg, color: COLORS.text, display: 'grid', gridTemplateColumns: '240px 1fr' },
@@ -165,18 +185,46 @@ function loadComments(parentId) {
   async function handlePost() {
     if (!text.trim()) { setMsg('Please write something.'); return; }
     if (!replyTo && !selected?.id) { setMsg('Please select a video from Search first.'); return; }
-    setSaving(true);
-    const res = saveReviewOrComment();  // local demo; swap with backend later
-    setSaving(false);
-    if (res.ok) {
-      setMsg(res.type === 'comment' ? 'Comment posted!' : 'Review posted!');
+    if (!user?.id) {
+    setMsg('You must be logged in to post.');
+    return;
+  }
+  setSaving(true);
+  try {
+    if (replyToId) {
+      // Comment on existing review via backend
+      const result = await postReviewComment({
+        reviewId: replyToId,
+        userId: user.id,
+        text,
+      });
+
+      // mirror to local storage if we want to
+      // const resLocal = saveReviewOrComment();
+
+      setMsg('Comment posted!');
       setText('');
-      // Stay here so user sees the success; or navigate back:
-      // nav('/home');
-      setTimeout(() => setMsg(''), 1200);
+      
     } else {
-      setMsg('Failed to post.');
+      // New review via backend
+      const result = await postVideoReview({
+        videoId: selected?.id,
+        userId: user.id,
+        rating,
+        text,
+      });
+
+      setMsg('Review posted!');
+      setText('');
     }
+
+    setTimeout(() => setMsg(''), 1200);
+  } catch (err) {
+    console.error(err);
+    setMsg('Failed to post.');
+  } finally {
+    setSaving(false);
+  }
   }
 
   // Sidebar hover states (just Home/Profile/Logout clickable here)

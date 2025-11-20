@@ -7,7 +7,8 @@ export const reviewService = {
     async createReview({type, targetId, rating, reviewText, userId}) {
         console.log("Creating review:", {type, targetId, rating, reviewText, userId});  
         const db = new DBManager();
-        await db.createReviewEntry(type, targetId, rating, reviewText, userId);
+        const created = await db.createReviewEntry(type, targetId, rating, reviewText, userId);
+        return created;
     },
 
     // get the reviews for a video/channel

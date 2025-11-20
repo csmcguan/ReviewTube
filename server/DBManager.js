@@ -154,8 +154,12 @@ export class DBManager {
         reviewEntry.rating = _rating;
         reviewEntry.reviewText = _reviewText;
         reviewEntry.userId = _userId;
+        reviewEntry.createdAt = new Date().toISOString();
 
-        await this.insertCollectionEntry(this.collReview(), reviewEntry);
+        const result = await this.insertCollectionEntry(this.collReview(), reviewEntry);
+
+        // Attach Mongo _id so the caller can use it if needed
+        return { ...reviewEntry, _id: result.insertedId };
     }
 
     async getReviewEntries(_type, _targetId, _userId, _startIndex, _endIndex)

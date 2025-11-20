@@ -5,35 +5,41 @@ const router = express.Router();
 
 // video reviews
 router.post(
-    "/videos/:videoId/reviews",
+    "/video/:videoId",
     reviewController.writeVideoReview
 );
 
 router.get(
-    "/video/:videoID/reviews",
+    "/video/:videoID",
     reviewController.getVideoReviews
 );
 
 // channel reviews
 router.post(
-    "/channel/:channelId/reviews",
+    "/channel/:channelId",
     reviewController.writeChannelReview
 );
 
 router.get(
-    "/channel/:channelId/reviews",
+    "/channel/:channelId",
     reviewController.getChannelReviews
 );
 
 // comments
 router.post(
-    "/reivew/:reviewId/comments",
+    "/:reviewId/comments",
     reviewController.postReviewComment
 );
 
 router.get(
-    "/reviews/:reviewId/comments",
+    "/:reviewId/comments",
     reviewController.getReviewComments
+);
+
+// Home feed
+router.get(
+  "/feed",
+  reviewController.getFeed
 );
 
 export default router

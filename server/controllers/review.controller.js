@@ -41,15 +41,15 @@ export const reviewController = {
     async getVideoReviews(req, res, next) {
         try {
             const { videoId } = req.params;
-            const { userId, startIndex, endIndex } = req.body;
+            const { userId, startIndex, endIndex } = req.query;
 
             // fetch the comments requested
             const reviews = await reviewService.getReviews({
                 type: "video",
                 targetId: videoId,
-                userId: userId,
-                startIndex: startIndex,
-                endIndex: endIndex
+                userId: userId ? Number(userId) : -1,
+                startIndex: startIndex ? Number(startIndex) : -1,
+                endIndex: endIndex ? Number(endIndex) : -1,
             });
 
             res.status(200).json(reviews);
@@ -141,4 +141,24 @@ export const reviewController = {
             next(err);
         }
     },
+
+    // Get reviews for home feed
+    async getFeed(req, res, next) {
+        try {
+            // Currently no filtering, just get all reviews, given time constraints
+            const reviews = await reviewService.getReviews({
+                type: "",       // no type filter
+                targetId: -1,   // no target filter
+                userId: -1,     // no user filter
+                startIndex: -1, // let DBManager return everything
+                endIndex: -1,
+            });
+
+            res.status(200).json(reviews);
+        } catch (err) {
+            console.error("Get feed error:", err);
+            next(err);
+        }
+    },
+
 };

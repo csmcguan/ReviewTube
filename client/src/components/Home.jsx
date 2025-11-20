@@ -1,5 +1,8 @@
+/* eslint-disable no-unused-vars */
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getFeedReviews } from '../services/reviewsApi';
+
 
 const COLORS = {
   bg: '#0f0f10',
@@ -46,7 +49,7 @@ export default function Home({ user, onLogout }) {
  }
 
 
- // shape of a review (local): { id, author:{id,name}, videoId, videoTitle, rating, text, createdAt }
+ // eslint-disable-next-line react-hooks/exhaustive-deps
  function seedDemoIfEmpty() {
    const current = readJSON('rt_reviews', []);
    if (current.length) return;
@@ -59,15 +62,40 @@ export default function Home({ user, onLogout }) {
  }
  
  useEffect(() => {
-   // For backend replace with backend GET /feed
-   seedDemoIfEmpty();
-   const all = readJSON('rt_reviews', []);
-   const filtered = all
-     .filter(r => FOLLOWED_USER_IDS.includes(r.author?.id) /* || FOLLOWED_CHANNEL_IDS includes r.channelId */)
-     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-   setFeed(filtered);
- // eslint-disable-next-line react-hooks/exhaustive-deps
- }, []);
+  async function loadFeed() {
+    try {
+      // get reviews from backend
+      const raw = await getFeedReviews();
+
+      
+      const all = raw.map(r => ({
+        id: String(r._id || r.id), // use Mongo _id as id
+        author: {
+          id: r.userId,
+          name: `User ${r.userId}`,  
+          email: '',
+        },
+        videoTitle: r.targetId,     
+        rating: r.rating,
+        text: r.reviewText,
+        createdAt: r.createdAt || new Date().toISOString(),
+      }));
+
+      // filter + sort
+      const filtered = all
+        .filter(r => FOLLOWED_USER_IDS.includes(r.author.id))
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      setFeed(filtered);
+    } catch (err) {
+      console.error('Failed to load feed:', err);
+    }
+  }
+
+  loadFeed();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
+
 
 
   function handleLogout() {
