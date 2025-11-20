@@ -27,6 +27,8 @@ export class DBManager {
         //await this.createUserEntry("Abyan", "abeirf@gmail.com", "demo123","", new Date());
 
         //await this.verifyUser("abeirf@gmail.com", "demo123");
+
+        //var test = await this.getReviewEntries("video", -1, -1, 1, 3);
     }
 
     // create Mongo Client
@@ -159,17 +161,17 @@ export class DBManager {
     async getReviewEntries(_type, _targetId, _userId, _startIndex, _endIndex)
     {
         const query = {};
-        if(_type != "")
+        if(_type !== "")
         {
             query.type = _type;
         }
 
-        if(_targetId != 0)
+        if(_targetId !== -1)
         {
             query.targetId = _targetId;
         }
 
-        if(_userId != 0)
+        if(_userId !== -1)
         {
             query.userId = _userId;
         }
@@ -180,7 +182,8 @@ export class DBManager {
         
         if(startInBounds && endInBounds && _startIndex < _endIndex)
         {
-            var copyArr = Arrays.copyOfRange(arr, _startIndex, _endIndex);
+            var copyArr = arr.slice(_startIndex, _endIndex);
+            return copyArr;
         }
         else
         {
