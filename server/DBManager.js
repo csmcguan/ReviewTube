@@ -27,6 +27,8 @@ export class DBManager {
         //await this.createUserEntry("Abyan", "abeirf@gmail.com", "demo123","", new Date());
 
         //await this.verifyUser("abeirf@gmail.com", "demo123");
+
+        //var test = await this.getReviewEntries("video", -1, -1, 1, 3);
     }
 
     // create Mongo Client
@@ -141,6 +143,51 @@ export class DBManager {
         else
         {
             return false;
+        }
+    }
+
+    async createReviewEntry(_type, _targetId, _rating, _reviewText, _userId)
+    {
+        const reviewEntry = {};
+        reviewEntry.type = _type;
+        reviewEntry.targetId = _targetId;
+        reviewEntry.rating = _rating;
+        reviewEntry.reviewText = _reviewText;
+        reviewEntry.userId = _userId;
+
+        await this.insertCollectionEntry(this.collReview(), reviewEntry);
+    }
+
+    async getReviewEntries(_type, _targetId, _userId, _startIndex, _endIndex)
+    {
+        const query = {};
+        if(_type !== "")
+        {
+            query.type = _type;
+        }
+
+        if(_targetId !== -1)
+        {
+            query.targetId = _targetId;
+        }
+
+        if(_userId !== -1)
+        {
+            query.userId = _userId;
+        }
+
+        var arr = await this.queryCollection(this.collReview(), query);
+        var startInBounds = (_startIndex >= 0) && (_startIndex < arr.length);
+        var endInBounds = (_endIndex >= 0) && (_endIndex < arr.length);
+        
+        if(startInBounds && endInBounds && _startIndex < _endIndex)
+        {
+            var copyArr = arr.slice(_startIndex, _endIndex);
+            return copyArr;
+        }
+        else
+        {
+            return arr;
         }
     }
 }
