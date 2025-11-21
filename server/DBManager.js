@@ -1,4 +1,4 @@
-import { MongoClient, ServerApiVersion } from "mongodb";
+import { MongoClient, ServerApiVersion, ObjectId } from "mongodb";
 
 export class DBManager {
     // Singleton constructor
@@ -23,12 +23,6 @@ export class DBManager {
         this.database = this.client.db("reviewtube");
 
         await this.checkCollections();
-
-        //await this.createUserEntry("Abyan", "abeirf@gmail.com", "demo123","", new Date());
-
-        //await this.verifyUser("abeirf@gmail.com", "demo123");
-
-        //var test = await this.getReviewEntries("video", -1, -1, 1, 3);
     }
 
     // create Mongo Client
@@ -62,7 +56,7 @@ export class DBManager {
     // check if reviewtube collections exists and if not create them
     async checkCollections()
     {
-        const collections = [this.collUser(), this.collReview()];
+        const collections = [this.collUser(), this.collReview(), this.collFriends(), this.collLikes()];
         const dbCollections = await this.database.listCollections().toArray();
         
         for (var i = 0; i < collections.length; i++) 
@@ -87,6 +81,16 @@ export class DBManager {
     collReview()
     {
         return "reviewdata";
+    }
+
+    collFriends()
+    {
+        return "frienddata";
+    }
+
+    collLikes()
+    {
+        return "likesdata";
     }
 
     // inserts entry into collection
@@ -121,8 +125,8 @@ export class DBManager {
     }
 
     // outputs email query to a user collection
-    // takes in a collection name string and a query object
-    // returns an array of objects matching the query
+    // takes in a email string
+    // returns an array of objects matching the query, which should only be one element
     async getUserData(_email)
     {
         let query = {email : _email};
@@ -131,6 +135,33 @@ export class DBManager {
         {
             return arr[0];
         }
+    }
+
+    // outputs User ID query to a user collection
+    // takes in a user ID string
+    // returns an array of objects matching the query, which should only be one element
+    async getUserDataID(_userID)
+    {
+        const ID = new ObjectId(_userID);
+        let query = { _id : ID };
+        var arr = await this.queryCollection(this.collUser(), query);
+        if ( arr != null)
+        {
+            return arr[0];
+        }
+    }
+
+    // Updates the user profile info
+    // takes in profile string and user ID string
+    // returns result of the update
+    async updateUserProfile(_userID, _profileInfo)
+    {
+        const coll = this.database.collection( this.collUser() );
+        const ID = new ObjectId(_userID);
+        const filter = { _id: ID };
+        const update = { $set: { _id: ID, profileinfo: _profileInfo }};
+        const result = await coll.updateOne(filter, update);
+        return result;
     }
 
     async verifyUser(_email, _password)
@@ -146,6 +177,7 @@ export class DBManager {
         }
     }
 
+    // Creates a review entry
     async createReviewEntry(_type, _targetId, _rating, _reviewText, _userId)
     {
         const reviewEntry = {};
@@ -158,36 +190,107 @@ export class DBManager {
         await this.insertCollectionEntry(this.collReview(), reviewEntry);
     }
 
-    async getReviewEntries(_type, _targetId, _userId, _startIndex, _endIndex)
+    async getReviewEntries(_type, _targetId, _userId)
     {
         const query = {};
-        if(_type !== "")
+        if(_type !== null)
         {
             query.type = _type;
         }
 
-        if(_targetId !== -1)
+        if(_targetId !== null)
         {
             query.targetId = _targetId;
         }
 
-        if(_userId !== -1)
+        if(_userId !== null)
         {
             query.userId = _userId;
         }
 
-        var arr = await this.queryCollection(this.collReview(), query);
-        var startInBounds = (_startIndex >= 0) && (_startIndex < arr.length);
-        var endInBounds = (_endIndex >= 0) && (_endIndex < arr.length);
-        
-        if(startInBounds && endInBounds && _startIndex < _endIndex)
-        {
-            var copyArr = arr.slice(_startIndex, _endIndex);
-            return copyArr;
-        }
-        else
-        {
-            return arr;
-        }
+        return await this.queryCollection(this.collReview(), query);
     }
+
+    async createFriendEntry(_firstID, _secondID, _status)
+    {
+        const friendEntry = {};
+        friendEntry.firstID = _firstID;
+        friendEntry.secondID = _secondID;
+        friendEntry.status = _status;
+        await this.insertCollectionEntry(this.collFriends(), friendEntry);
+    }
+
+    async getFriendEntries(_firstID, _secondID, _status)
+    {
+        const query = {};
+        if(_firstID !== null)
+        {
+            query.firstID = _firstID;
+        }
+
+        if(_secondID !== null)
+        {
+            query.secondID = _secondID;
+        }
+
+        if(_status !== null)
+        {
+            query.status = _status;
+        }
+
+        return await this.queryCollection(this.collFriends(), query);
+    }
+
+    async updateFriendEntries(_firstID, _secondID, _status)
+    {
+        const coll = this.database.collection( this.collFriends() );
+        const filter = { firstID: _firstID, secondID: _secondID };
+        const update = { $set: { status: _status }};
+        const result = await coll.updateOne(filter, update);
+        return result;
+    }
+
+    async createLikeEntry(_reviewID, _userID)
+    {
+        const likeEntry = {};
+        likeEntry.reviewID = _reviewID;
+        likeEntry.userID = _userID;
+        await this.insertCollectionEntry(this.collLikes(), likeEntry);
+    }
+
+    async getLikeEntries(_reviewID, _userID)
+    {
+        const query = {};
+        if(_reviewID !== null)
+        {
+            query.reviewID = _reviewID;
+        }
+
+        if(_userID !== null)
+        {
+            query.userID = _userID;
+        }
+
+        return await this.queryCollection(this.collLikes(), query);
+    }
+
+
+    sliceArray(_arr, _startIndex, _endIndex)
+    {
+        if(_arr === null)
+        {
+            return _arr;
+        }
+        if(_startIndex === null && _endIndex === null)
+        {
+            return _arr.slice();
+        }
+        else if (_startIndex !== null && _endIndex === null)
+        {
+            return _arr.slice(_startIndex);
+        }
+        return _arr.slice(_startIndex, _endIndex);
+    }
+
+
 }
