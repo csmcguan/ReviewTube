@@ -19,6 +19,7 @@ export const reviewService = {
     async getReviews({type, targetId, userId, startIndex, endIndex}) {
         console.log("Getting reviews:", {type, targetId, userId, startIndex, endIndex});
         const db = new DBManager();
-        return await db.getReviewEntries(type, targetId, userId, startIndex, endIndex);
+        const arr = await db.getReviewEntries(type, targetId, userId);
+        return db.sliceArray(arr, startIndex, endIndex);
     }
 };
