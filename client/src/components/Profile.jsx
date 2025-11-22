@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getProfile, updateProfile, getFollowing } from '../services/usersApi';
+
 
 const COLORS = {
   bg: '#0f0f10',
@@ -16,13 +18,34 @@ export default function Profile({ user, onLogout }) {
   const [bio, setBio] = useState('');
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState('');
+  const [friends, setFriends] = useState([]); 
 
-  //Loading the saved bio from localStorage: (keyed by email)
+
   useEffect(() => {
-    const key = user?.email ? `rt_profile_${user.email}` : 'rt_profile';
-    const saved = localStorage.getItem(key);
-    if (saved) setBio(saved);
-  }, [user?.email]);
+  if (!user?.id) return;
+
+  async function loadProfile() {
+    try {
+      // Load profile (bio) from backend
+      const profile = await getProfile(user.id); // expect { bio, ... }
+      setBio(profile?.bio || '');
+
+      // Load friends/following from backend
+      const following = await getFollowing(user.id); // [{ id, name }, ...]
+      setFriends(following || []);
+    } catch (err) {
+      console.error('Failed to load profile/friends:', err);
+
+      //  localStorage bio if backend not ready
+      const key = user?.email ? `rt_profile_${user.email}` : 'rt_profile';
+      const saved = localStorage.getItem(key);
+      if (saved) setBio(saved);
+    }
+  }
+
+  loadProfile();
+}, [user?.id, user?.email]);
+
 
   function handleLogout() {
     onLogout?.();
@@ -30,13 +53,26 @@ export default function Profile({ user, onLogout }) {
   }
 
   async function handleSave() {
-    setSaving(true);
+  if (!user?.id) return;
+
+  setSaving(true);
+  try {
+    await updateProfile({ userId: user.id, bio });
+
+    // Optional: keep local cache for faster load/fallback
     const key = user?.email ? `rt_profile_${user.email}` : 'rt_profile';
     localStorage.setItem(key, bio);
-    setSaving(false);
+
     setSavedMsg('Saved!');
+  } catch (err) {
+    console.error('Failed to save profile:', err);
+    setSavedMsg('Failed to save');
+  } finally {
+    setSaving(false);
     setTimeout(() => setSavedMsg(''), 1200);
   }
+}
+
 
   const layout = useMemo(() => ({
     shell: { minHeight: '100vh', background: COLORS.bg, color: COLORS.text, display: 'grid', gridTemplateColumns: '240px 1fr' },
@@ -155,14 +191,21 @@ export default function Profile({ user, onLogout }) {
             <div>
               <div style={{ fontWeight: 700, marginBottom: 8 }}>Friends</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {['Colman', 'Alex'].map((f) => (//Currently hardcoded friends, can be extended later
+                {friends.length ? (
+                  friends.map((f) => (
                   <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{ width: 30, height: 30, borderRadius: 999, background: COLORS.soft, display: 'grid', placeItems: 'center', fontWeight: 700 }}>
-                      {f.charAt(0)}
+                       {(f.name || f.id || 'U').charAt(0)}
                     </div>
-                    <div>{f}</div>
+                    <div>{f.name || f.id}</div>
+                    {f.email && (
+                      <div style={{ color: COLORS.dim, fontSize: 12 }}>{f.email}</div>
+                    )}
                   </div>
-                ))}
+                  ))
+                ) : (
+                  <div style={{color: COLORS.dim, fontSize: 13 }}>You are not following anyone yet.</div>  
+                )}
               </div>
             </div>
           </div>

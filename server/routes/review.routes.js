@@ -36,6 +36,22 @@ router.get(
     reviewController.getReviewComments
 );
 
+// Likes
+router.post(
+  "/:reviewId/like",
+  reviewController.likeReview      // to be implemented
+);
+
+router.post(
+  "/:reviewId/unlike",
+  reviewController.unlikeReview    // to be implemented
+);
+
+router.get(
+  "/:reviewId/likes",
+  reviewController.getReviewLikes  // to be implemented
+);
+
 // Home feed
 router.get(
   "/feed",

@@ -21,7 +21,7 @@ router.post(
 // unfollow another user
 router.post(
     "/:userId/unfollow/:targetId",
-    userController.blockUser
+    userController.unfollow
 );
 
 // block another user
@@ -36,5 +36,11 @@ router.get("/:userId", userController.getUserProfile);  // view another user's p
 
 // feed
 router.get("/:userId/feed", userController.getUserFeed);
+
+// followed users
+router.get(
+  "/:userId/following",
+  userController.getFollowing      // to be implemented
+);
 
 export default router;
