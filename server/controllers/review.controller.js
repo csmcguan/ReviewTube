@@ -21,7 +21,7 @@ export const reviewController = {
                 return res.status(400).json({ error: "Rating out of bounds" });
             }
 
-            const review = await reviewService.createReview({
+            await reviewService.createReview({
                 type: "video",
                 targetId: videoId,
                 rating,
@@ -29,7 +29,7 @@ export const reviewController = {
                 userId: userId
             });
 
-            res.status(201).json(review);
+            return res.status(201).json({ ok: true });
         } catch (err) {
             console.error("Write video review error:", err);
             next(err);
@@ -47,9 +47,9 @@ export const reviewController = {
             const reviews = await reviewService.getReviews({
                 type: "video",
                 targetId: videoId,
-                userId: userId ? Number(userId) : -1,
-                startIndex: startIndex ? Number(startIndex) : -1,
-                endIndex: endIndex ? Number(endIndex) : -1,
+                userId: userId ?? null,
+                startIndex: startIndex !== undefined ? Number(startIndex) : null,
+                endIndex: endIndex !== undefined ? Number(endIndex) : null,
             });
 
             res.status(200).json(reviews);
@@ -70,15 +70,15 @@ export const reviewController = {
                 return res.status(400).json({ error: "Missing review content" });
             }
 
-            const review = await reviewService.createReview({
+            await reviewService.createReview({
                 type: "channel",
                 targetId: channelId,
                 rating,
-                comment: reviewText,
+                reviewText,
                 userId: userId || 1,
             });
 
-            res.status(201).json(review);
+            return res.status(201).json({ ok: true });
         } catch (err) {
             console.error("Write channel review error:", err);
             next(err);
@@ -92,9 +92,12 @@ export const reviewController = {
             const reviews = await reviewService.getReviews({
                 type: "channel",
                 targetId: channelId,
+                userId: userId ?? null,
+                startIndex: startIndex !== undefined ? Number(startIndex) : null,
+                endIndex: endIndex !== undefined ? Number(endIndex) : null,
             });
 
-            res.status(200).json(reviews);
+            return res.status(200).json(reviews);
         } catch (err) {
             console.error("Get channel reviews error:", err);
             next(err);
@@ -116,13 +119,13 @@ export const reviewController = {
                 return res.status(400).json({ error: "Missing comment text" });
             }
 
-            const comment = await reviewService.createComment({
+            const comment = await reviewService.createComment({//Create comment hasn't been implemented yet in service
                 reviewId,
                 text,
                 userId: userId || 1,
             });
 
-            res.status(201).json(comment);
+            return res.status(201).json(comment);
         } catch (err) {
             console.error("Post review comment error:", err);
             next(err);
@@ -133,9 +136,9 @@ export const reviewController = {
         try {
             const { reviewId } = req.params;
 
-            const comments = await reviewService.getComments(reviewId);
+            const comments = await reviewService.getComments(reviewId);//get comments hasn't been implemented yet in service
 
-            res.status(200).json(comments);
+            return res.status(200).json(comments);
         } catch (err) {
             console.error("Get review comments error:", err);
             next(err);
@@ -147,14 +150,14 @@ export const reviewController = {
         try {
             // Currently no filtering, just get all reviews, given time constraints
             const reviews = await reviewService.getReviews({
-                type: "",       // no type filter
-                targetId: -1,   // no target filter
-                userId: -1,     // no user filter
-                startIndex: -1, // let DBManager return everything
-                endIndex: -1,
+                type: null,       // no type filter
+                targetId: null,   // no target filter
+                userId: null,     // no user filter
+                startIndex: null, 
+                endIndex: null,
             });
 
-            res.status(200).json(reviews);
+            return res.status(200).json(reviews);
         } catch (err) {
             console.error("Get feed error:", err);
             next(err);

@@ -10,7 +10,7 @@ router.post(
 );
 
 router.get(
-    "/video/:videoID",
+    "/video/:videoId",
     reviewController.getVideoReviews
 );
 
