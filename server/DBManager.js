@@ -93,6 +93,11 @@ export class DBManager {
         return "likesdata";
     }
 
+    collComments()
+    {
+        return "commentsdata";
+    }
+
     // inserts entry into collection
     // takes in a collection name string and entry object
     async insertCollectionEntry(_collection, _entry)
@@ -274,7 +279,37 @@ export class DBManager {
         return await this.queryCollection(this.collLikes(), query);
     }
 
+    async createCommentEntry(_reviewID, _userID, _comment)
+    {
+        const commentEntry = {};
+        commentEntry.reviewID = _reviewID;
+        commentEntry.userID = _userID;
+        commentEntry.comment = _comment;
+        await this.insertCollectionEntry(this.collComments(), commentEntry);
+    }
 
+    async getCommentEntries(_reviewID, _userID, _comment)
+    {
+        const query = {};
+        if(_reviewID !== null)
+        {
+            query.reviewID = _reviewID;
+        }
+
+        if(_userID !== null)
+        {
+            query.userID = _userID;
+        }
+
+        if(_comment !== null)
+        {
+            query.comment = _comment;
+        }
+        return await this.queryCollection(this.collComments(), query);
+    }
+
+    // slice Array is a wrapper around javascript slice
+    // slice accepts integers that aren't valid indices for the array
     sliceArray(_arr, _startIndex, _endIndex)
     {
         if(_arr === null)
