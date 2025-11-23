@@ -152,5 +152,16 @@ export const userController = {
             console.error("Get user feed error:", err);
             next(err);
         }
+    },
+    //Get followed users
+    async getFollowing(req, res, next) {
+    try {
+        const { userId } = req.params;
+        const list = await userService.getFollowing(userId); // to be implemented
+        return res.json({ ok: true, following: list });
+    } catch (err) {
+        console.error("Get following error:", err);
+        next(err);
+    }
     }
 };

@@ -1,6 +1,9 @@
 import { useEffect,useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLocation } from 'react-router-dom';
+import { likeReview, unlikeReview } from '../services/likesApi';
+import { followUser, unfollowUser, getFollowing } from '../services/usersApi';
+
 
 const COLORS = {
   bg: '#0f0f10',
@@ -12,12 +15,7 @@ const COLORS = {
   soft: '#151619',
 };
 
-const readLikes = () => {
-   try { return JSON.parse(localStorage.getItem('rt_likes') || '{}'); } catch { return {}; }
- };
-const writeLikes = (m) => localStorage.setItem('rt_likes', JSON.stringify(m));
-const likeCountFor = (id) => (readLikes()[id] || []).length;
-const userHasLiked = (id, uid) => (readLikes()[id] || []).includes(uid);
+
 
 const MODES = ['videos', 'channels', 'users'];
 
@@ -119,28 +117,94 @@ export default function Search({ user, onLogout }) {
   const [hoverProfile, setHoverProfile] = useState(false);
   const [hoverLogout, setHoverLogout] = useState(false);
   // eslint-disable-next-line no-unused-vars
-  const [likeBump, setLikeBump] = useState(0);
   const loc = useLocation();
   const params = new URLSearchParams(loc.search);
   const initialQ = params.get('q') || '';
   const [query, setQuery] = useState(initialQ);
+  const [likesMap, setLikesMap] = useState({});      
+  const [following, setFollowing] = useState([]);  
+  const followingIds = useMemo(
+    () => following.map((f) => f.id),
+    [following]
+  );
+  const isFollowing = (userId) => followingIds.includes(userId);
+
+  useEffect(() => {
+    async function loadFollowing() {
+      if (!user?.id) return;
+      try {
+        const data = await getFollowing(user.id); 
+        setFollowing(data || []);
+      } catch (err) {
+        console.error('Failed to load following:', err);
+      }
+    }
+
+    loadFollowing();
+  }, [user?.id]);
+
+  const likeCountFor = (id) => (likesMap[id]?.length || 0);
+
+const userHasLiked = (id, uid) => {
+  if (!uid) return false;
+  const arr = likesMap[id] || [];
+  return arr.includes(uid);
+};
+
+async function toggleLike(reviewId) {
+  if (!user?.id) return;
+
+  const already = userHasLiked(reviewId, user.id);
+
+  try {
+    if (already) {
+      await unlikeReview({ reviewId, userId: user.id });
+    } else {
+      await likeReview({ reviewId, userId: user.id });
+    }
+
+    // Optimistic local update
+    setLikesMap((prev) => {
+      const current = prev[reviewId] || [];
+      let next;
+      if (already) {
+        next = current.filter((id) => id !== user.id);
+      } else {
+        next = current.includes(user.id) ? current : [...current, user.id];
+      }
+      return { ...prev, [reviewId]: next };
+    });
+  } catch (err) {
+    console.error('Failed to toggle like:', err);
+  }
+}
+async function handleToggleFollow(targetUserId, targetName) {
+  if (!user?.id) return;
+
+  const already = isFollowing(targetUserId);
+
+  try {
+    if (already) {
+      await unfollowUser({ userId: user.id, targetId: targetUserId });
+      setFollowing((prev) => prev.filter((f) => f.id !== targetUserId));
+    } else {
+      await followUser({ userId: user.id, targetId: targetUserId });
+      setFollowing((prev) => [...prev, { id: targetUserId, name: targetName }]);
+    }
+  } catch (err) {
+    console.error('Failed to toggle follow:', err);
+  }
+}
+
+
+
+
 
   useEffect(() => {
   if (initialQ) runSearch(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-
-  function toggleLikeLocal(reviewId) {
-   if (!user?.id) return;
-   const map = readLikes();
-   const arr = map[reviewId] || [];
-   const i = arr.indexOf(user.id);
-   if (i >= 0) arr.splice(i, 1); else arr.push(user.id);
-   map[reviewId] = arr;
-   writeLikes(map);
-   setLikeBump((n) => n + 1);
- }
 
   function handleLogout() {
     onLogout?.();
@@ -489,6 +553,15 @@ export default function Search({ user, onLogout }) {
                     </div>
                     <div style={{ padding: 8, flex: 1 }}>
                     <h4 style={layout.metaTitle}>{u.name}</h4>
+                    <div style={{ marginTop: 4 }}>
+                      <button
+                        type="button"
+                        style={layout.reviewBtn}
+                        onClick={() => handleToggleFollow(u.id, u.name)}
+                      >
+                        {isFollowing(u.id) ? 'Unfollow' : 'Follow'}
+                      </button>
+                    </div>
                     <div style={{ ...layout.dim, marginTop: 4 }}>Recent Reviews</div>
                     <ul style={{ marginTop: 6, display: 'grid', gap: 6 }}>
                         {u.reviews.map((r) => (
@@ -516,7 +589,7 @@ export default function Search({ user, onLogout }) {
                             </button>
                             <button
                                 style={layout.reviewBtn}
-                                onClick={() => toggleLikeLocal(r.id)}
+                                onClick={() => toggleLike(r.id)}
                                 type="button"
                                 title={userHasLiked(r.id, user?.id) ? 'Unlike' : 'Like'}
                             >

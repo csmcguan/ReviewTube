@@ -1,5 +1,11 @@
+/* eslint-disable no-unused-vars */
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { postVideoReview, postReviewComment } from '../services/reviewsApi';
+import { getVideoReviews } from '../services/reviewsApi';
+import { likeReview, unlikeReview, getReviewLikes } from '../services/likesApi';
+
+
 
 const COLORS = {
   bg: '#0f0f10',
@@ -58,16 +64,28 @@ export default function Review({ user, onLogout }) {
   const fallbackSnippet = qs.get('snippet') || '';
   const [likes, setLikes] = useState([]);
   const [liked, setLiked] = useState(false);
-   const refreshLikes = useCallback((id) => {
-  if (!id) return;
-  const map = readLikesMap();
-  const arr = map[id] || [];
-  setLikes(arr);
-  setLiked(!!user && arr.includes(user.id));
-}, [user]);
+  const refreshLikes = useCallback(
+  async (id) => {
+    if (!id) return;
+    try {
+      const data = await getReviewLikes(id); 
+      const arr = data?.userIds || [];
+      setLikes(arr);
+      if (user?.id) {
+        setLiked(arr.includes(user.id));
+      } else {
+        setLiked(false);
+      }
+    } catch (err) {
+      console.error('Failed to load likes for review', id, err);
+      setLikes([]);
+      setLiked(false);
+    }
+  },
+  [user?.id]
+);
 
   useEffect(() => {
-    // load video details if a videoId is provided
     (async () => {
       if (videoId) {
         const d = await ytVideoDetails(videoId);
@@ -77,16 +95,35 @@ export default function Review({ user, onLogout }) {
   }, [videoId]);
 
   useEffect(() => {
-    if (!replyToId) return;
-    const all = readJSON('rt_reviews', []);
-    const found = all.find(r => r.id === replyToId);
-    setParentReview(found || null);
-    setComments(loadComments(replyToId));
-    refreshLikes(replyToId);
-    if (found?.videoId && !videoId) {
-      ytVideoDetails(found.videoId).then(d => setSelected(d || { id: found.videoId }));
+  if (!replyToId) return;
+
+  async function loadParentFromBackend() {
+    try {
+      const vid = videoId || selected?.id;
+      if (!vid) return;
+
+      const all = await getVideoReviews({ videoId: vid });
+      const found = all.find(r => String(r._id) === String(replyToId)); // replyToId should be Mongo _id
+
+      setParentReview(found || null);
+      setComments(loadComments(replyToId));  // still using local for comments for now
+      if (replyToId) {
+        await refreshLikes(replyToId);
+      }
+
+      if (found?.targetId && !videoId) {
+        ytVideoDetails(found.targetId).then(d =>
+          setSelected(d || { id: found.targetId })
+        );
+      }
+    } catch (err) {
+      console.error("Failed to load parent review:", err);
     }
-  }, [replyToId, videoId, refreshLikes]);
+  }
+
+  loadParentFromBackend();
+}, [replyToId, videoId, selected?.id, refreshLikes]);
+
 
   const layout = useMemo(() => ({
     shell: { minHeight: '100vh', background: COLORS.bg, color: COLORS.text, display: 'grid', gridTemplateColumns: '240px 1fr' },
@@ -111,72 +148,112 @@ function loadComments(parentId) {
         .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 }
 
-  function saveReviewOrComment() {
-    const now = new Date().toISOString();
-    if (replyToId) {
-      // comment on an existing review
-      const comments = readJSON('rt_comments', []);
-      const comment = {
-        id: `c_${Date.now()}`,
-        parentReviewId: replyToId,
-        author: { id: user?.id, name: user?.name, email: user?.email },
-        text,
-        createdAt: now,
-      };
-      comments.push(comment);
-      writeJSON('rt_comments', comments);
-      setComments(loadComments(replyToId));   // refresh UI
-      return { ok: true, type: 'comment', id: comment.id };
-    } else {
-      // new review
-      const reviews = readJSON('rt_reviews', []);
-      const review = {
-        id: `r_${Date.now()}`,
-        author: { id: user?.id, name: user?.name, email: user?.email },
-        videoId: selected?.id || null,
-        rating,
-        text,
-        createdAt: now,
-      };
-      reviews.push(review);
-      writeJSON('rt_reviews', reviews);
-      return { ok: true, type: 'review', id: review.id };
-    }
+function saveReviewOrComment() {
+  const now = new Date().toISOString();
+  if (replyToId) {
+    // comment on an existing review
+    const comments = readJSON('rt_comments', []);
+    const comment = {
+      id: `c_${Date.now()}`,
+      parentReviewId: replyToId,
+      author: { id: user?.id, name: user?.name, email: user?.email },
+      text,
+      createdAt: now,
+    };
+    comments.push(comment);
+    writeJSON('rt_comments', comments);
+    setComments(loadComments(replyToId));   // refresh UI
+    return { ok: true, type: 'comment', id: comment.id };
+  } else {
+    // new review
+    const reviews = readJSON('rt_reviews', []);
+    const review = {
+      id: `r_${Date.now()}`,
+      author: { id: user?.id, name: user?.name, email: user?.email },
+      videoId: selected?.id || null,
+      rating,
+      text,
+      createdAt: now,
+    };
+    reviews.push(review);
+    writeJSON('rt_reviews', reviews);
+    return { ok: true, type: 'review', id: review.id };
   }
+}
 
-  function readLikesMap() {
-   return readJSON('rt_likes', {}); // { [reviewId]: [userId,..] }
- }
- function writeLikesMap(map) {
-   writeJSON('rt_likes', map);
- }
- function toggleLike() {
-   if (!replyToId || !user?.id) return;
-   const map = readLikesMap();
-   const arr = map[replyToId] || [];
-   const i = arr.indexOf(user.id);
-   if (i >= 0) arr.splice(i, 1);
-   else arr.push(user.id);
-   map[replyToId] = arr;
-   writeLikesMap(map);
-   refreshLikes(replyToId);
- }
+  async function toggleLike() {
+  if (!replyToId || !user?.id) return;
+
+  const already = liked;
+
+  try {
+    if (already) {
+      await unlikeReview({ reviewId: replyToId, userId: user.id });
+    } else {
+      await likeReview({ reviewId: replyToId, userId: user.id });
+    }
+
+    // Optimistic local update
+    setLikes((prev) => {
+      const current = prev || [];
+      let next;
+      if (already) {
+        next = current.filter((id) => id !== user.id);
+      } else {
+        next = current.includes(user.id) ? current : [...current, user.id];
+      }
+      return next;
+    });
+    setLiked(!already);
+  } catch (err) {
+    console.error('Failed to toggle like:', err);
+  }
+}
+
 
   async function handlePost() {
     if (!text.trim()) { setMsg('Please write something.'); return; }
     if (!replyTo && !selected?.id) { setMsg('Please select a video from Search first.'); return; }
-    setSaving(true);
-    const res = saveReviewOrComment();  // local demo; swap with backend later
-    setSaving(false);
-    if (res.ok) {
-      setMsg(res.type === 'comment' ? 'Comment posted!' : 'Review posted!');
+    if (!user?.id) {
+    setMsg('You must be logged in to post.');
+    return;
+  }
+  setSaving(true);
+  try {
+    if (replyToId) {
+      // Comment on existing review via backend
+      const result = await postReviewComment({
+        reviewId: replyToId,
+        userId: user.id,
+        text,
+      });
+
+      // mirror to local storage if we want to
+      // const resLocal = saveReviewOrComment();
+
+      setMsg('Comment posted!');
       setText('');
-      // Stay here so user sees the success; or navigate back:
-      // nav('/home');
-      setTimeout(() => setMsg(''), 1200);
+      
     } else {
-      setMsg('Failed to post.');
+      // New review via backend
+      const result = await postVideoReview({
+        videoId: selected?.id,
+        userId: user.id,
+        rating,
+        text,
+      });
+
+      setMsg('Review posted!');
+      setText('');
     }
+
+    setTimeout(() => setMsg(''), 1200);
+  } catch (err) {
+    console.error(err);
+    setMsg('Failed to post.');
+  } finally {
+    setSaving(false);
+  }
   }
 
   // Sidebar hover states (just Home/Profile/Logout clickable here)
