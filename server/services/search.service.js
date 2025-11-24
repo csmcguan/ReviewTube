@@ -19,6 +19,8 @@ export async function youtubeSearch({ query, type, maxResults = 10, pageToken })
         key: env.YT_API_KEY,
     });
 
+    console.log(env.YT_API_KEY);
+
     if (pageToken) {
         params.set("pageToken", pageToken);
     }

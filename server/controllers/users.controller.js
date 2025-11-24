@@ -171,5 +171,31 @@ export const userController = {
             console.error("Get following error:", err);
             next(err);
         }
-    }
+    },
+
+    async searchUsers(req, res, next) {
+        try {
+            const q = (req.query.q || "").trim();
+            const maxResults = req.query.maxResults
+                ? Number(req.query.maxResults)
+                : 10;
+
+            if (!q) {
+                console.error("Missing user search query");
+                return res
+                    .status(400)
+                    .json({ ok: false, error: "Missing search query" });
+            }
+
+            const users = await userService.searchUsers({
+                query: q,
+                maxUsers: maxResults,
+            });
+
+            return res.json({ ok: true, users });
+        } catch (err) {
+            console.error("Search users error:", err);
+            next(err);
+        }
+    },
 };
