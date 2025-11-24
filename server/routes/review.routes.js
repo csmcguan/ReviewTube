@@ -39,17 +39,17 @@ router.get(
 // Likes
 router.post(
   "/:reviewId/like",
-  reviewController.likeReview      // to be implemented
+  reviewController.likeReview      // now implemente!
 );
 
 router.post(
   "/:reviewId/unlike",
-  reviewController.unlikeReview    // to be implemented
+  reviewController.unlikeReview    // now implemented!
 );
 
 router.get(
   "/:reviewId/likes",
-  reviewController.getReviewLikes  // to be implemented
+  reviewController.getReviewLikes  // now implemented!
 );
 
 export default router

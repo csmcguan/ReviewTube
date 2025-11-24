@@ -15,14 +15,14 @@ export const userService = {
         const u = await dbManager.getUserData(email);
         if (u) {
             console.error("Email already registered during:", email);
-            return res.status(409).json({ ok: false, error: "Email already registered" });
+            return null;
         }
 
         console.log("Signing up user:", email);
-        await dbManager.createUserEntry(name, email, password, "", new Date());
+        const created = await dbManager.createUserEntry(name, email, password, "", new Date());
 
         // we probably need to have the DB assign an id
-        return { name, email };
+        return { id: created._id.toString(), username: created.username, email: created.email };
     },
 
 
@@ -32,7 +32,7 @@ export const userService = {
         console.log("Attempting to log in user:", email);
         if (u && u.password === password) {
             console.log("Login successful for user:", email);
-            return { ok: true, user: { id: u.id, name: u.name, email: u.email } };
+            return { ok: true, user: { id: u._id.toString(), name: u.username, email: u.email } };
         }
     },
 
@@ -58,11 +58,31 @@ export const userService = {
 
     // get a user's profile
     async getProfile(userId) {
-        
+        const user = await dbManager.getUserDataID(userId);
+        if (!user) {
+            return null;
+        }
+
+        return {
+            id: user._id.toString(),
+            name: user.username,
+            email: user.email,
+            bio: user.profileinfo ?? "",
+        };
     },
 
     async getUserFeed(userId, startIndex, count) {
-        // once database contains friends, etc.
-        // we will need an algorithm to generate a feed
+        // 1. Get all feed entries for this user from the DB
+        const allEntries = await dbManager.getUserFeedEntries(userId);
+
+        if (!allEntries || allEntries.length === 0) {
+            return [];
+        }
+
+        // 2. Paginate using the DBManager helper
+        const endIndex = startIndex + count;
+        const page = dbManager.sliceArray(allEntries, startIndex, endIndex);
+
+        return page;
     }
 };

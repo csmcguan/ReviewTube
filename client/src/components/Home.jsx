@@ -1,8 +1,7 @@
 /* eslint-disable no-unused-vars */
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getFeedReviews } from '../services/usersApi';
-import { getFollowing } from '../services/usersApi';
+import { getFeedReviews, getFollowing } from '../services/usersApi';
 import { likeReview, unlikeReview, getReviewLikes } from '../services/likesApi';
 
 
@@ -21,7 +20,7 @@ export default function Home({ user, onLogout }) {
   // eslint-disable-next-line no-unused-vars
   const [err, setErr] = useState('');
   const navigate = useNavigate();
-  const [hoverLogout, setHoverLogout] = useState(false);    
+  const [hoverLogout, setHoverLogout] = useState(false);
   const [hoverProfile, setHoverProfile] = useState(false);
   const [hoverSearch, setHoverSearch] = useState(false);
   function readJSON(k, d) { try { return JSON.parse(localStorage.getItem(k) || JSON.stringify(d)); } catch { return d; } }
@@ -30,41 +29,41 @@ export default function Home({ user, onLogout }) {
   const [following, setFollowing] = useState([]);    // array for followed users
   const [likesMap, setLikesMap] = useState({});      // Likes map for reviews
   // who the user follows (mock). Backend will compute this.
- /*const FOLLOWED_USER_IDS = ['u1', 'u2'];       // Hardcoded followed users
- //const FOLLOWED_CHANNEL_IDS = ['UCxxxx', 'UCyyyy']; // optional future use
- const readLikes = () => readJSON('rt_likes', {});
- const writeLikes = (m) => writeJSON('rt_likes', m);
- const likeCount = (id) => (readLikes()[id] || []).length;
- const hasLiked = (id) => {
-  if (!user?.id) return false;
-  const arr = readLikes()[id] || [];
-  return arr.includes(user.id);
- };
- function toggleLike(reviewId) {
-   if (!user?.id) return;
-   const map = readLikes();
-   const arr = map[reviewId] || [];
-   const i = arr.indexOf(user.id);
-   if (i >= 0) arr.splice(i, 1); else arr.push(user.id);
-   map[reviewId] = arr;
-   writeLikes(map);
-   // refresh counts
-   setFeed(f => [...f]);
- }
-
-
- // eslint-disable-next-line react-hooks/exhaustive-deps
- function seedDemoIfEmpty() {
-   const current = readJSON('rt_reviews', []);
-   if (current.length) return;
-   const now = Date.now();
-   const demo = [
-     { id: 'r1', author: { id: 'u1', name: 'Alex' },   videoId: 'vid1', videoTitle: 'Intro to Mechanics',   rating: 4, text: 'Great explanation! Really improved my concepts.', createdAt: new Date(now - 1000*60*40).toISOString() },
-     { id: 'r2', author: { id: 'u2', name: 'Colman' }, videoId: 'vid2', videoTitle: 'CinemaWins: Inception', rating: 5, text: 'Interesting premise!', createdAt: new Date(now - 1000*60*90).toISOString() },
-   ];
-   writeJSON('rt_reviews', demo);
- }*/
- const likeCount = (id) => (likesMap[id]?.length || 0);
+  /*const FOLLOWED_USER_IDS = ['u1', 'u2'];       // Hardcoded followed users
+  //const FOLLOWED_CHANNEL_IDS = ['UCxxxx', 'UCyyyy']; // optional future use
+  const readLikes = () => readJSON('rt_likes', {});
+  const writeLikes = (m) => writeJSON('rt_likes', m);
+  const likeCount = (id) => (readLikes()[id] || []).length;
+  const hasLiked = (id) => {
+   if (!user?.id) return false;
+   const arr = readLikes()[id] || [];
+   return arr.includes(user.id);
+  };
+  function toggleLike(reviewId) {
+    if (!user?.id) return;
+    const map = readLikes();
+    const arr = map[reviewId] || [];
+    const i = arr.indexOf(user.id);
+    if (i >= 0) arr.splice(i, 1); else arr.push(user.id);
+    map[reviewId] = arr;
+    writeLikes(map);
+    // refresh counts
+    setFeed(f => [...f]);
+  }
+ 
+ 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  function seedDemoIfEmpty() {
+    const current = readJSON('rt_reviews', []);
+    if (current.length) return;
+    const now = Date.now();
+    const demo = [
+      { id: 'r1', author: { id: 'u1', name: 'Alex' },   videoId: 'vid1', videoTitle: 'Intro to Mechanics',   rating: 4, text: 'Great explanation! Really improved my concepts.', createdAt: new Date(now - 1000*60*40).toISOString() },
+      { id: 'r2', author: { id: 'u2', name: 'Colman' }, videoId: 'vid2', videoTitle: 'CinemaWins: Inception', rating: 5, text: 'Interesting premise!', createdAt: new Date(now - 1000*60*90).toISOString() },
+    ];
+    writeJSON('rt_reviews', demo);
+  }*/
+  const likeCount = (id) => (likesMap[id]?.length || 0);
 
   const hasLiked = (id) => {
     if (!user?.id) return false;
@@ -100,69 +99,68 @@ export default function Home({ user, onLogout }) {
     }
   }
   const followingIds = useMemo(
-  () => following.map((f) => f.id),
-  [following]
-);
- useEffect(() => {
-  async function loadHome() {
-    if (!user?.id) return;
+    () => following.map((f) => f.id),
+    [following]
+  );
+  useEffect(() => {
+    async function loadHome() {
+      if (!user?.id) return;
 
-    try {
-      // Load who the user follows + all reviews in parallel
-      const [followingData, rawReviews] = await Promise.all([
-        getFollowing(user.id),    // expect [{ id, name }, ...]
-        getFeedReviews(),         // raw reviews from backend
-      ]);
+      try {
+        // Load who the user follows + all reviews in parallel
+        const [followingData, rawReviews] = await Promise.all([
+          getFollowing(user.id),
+          getFeedReviews(user.id, { startIndex: 0, count: 50 }),
+        ]);
+        setFollowing(followingData || []);
 
-      setFollowing(followingData || []);
+        // Normalize reviews to match UI shape
+        const all = (rawReviews || []).map((r) => ({
+          id: String(r._id || r.id),
+          author: {
+            id: r.userId,
+            name: r.authorName || `User ${r.userId}`, // adjust if backend adds name
+            email: '',
+          },
+          videoTitle: r.videoTitle || r.targetId,
+          rating: r.rating,
+          text: r.reviewText,
+          createdAt: r.createdAt || new Date().toISOString(),
+        }));
 
-      // Normalize reviews to match UI shape
-      const all = (rawReviews || []).map((r) => ({
-        id: String(r._id || r.id),
-        author: {
-          id: r.userId,
-          name: r.authorName || `User ${r.userId}`, // adjust if backend adds name
-          email: '',
-        },
-        videoTitle: r.videoTitle || r.targetId,
-        rating: r.rating,
-        text: r.reviewText,
-        createdAt: r.createdAt || new Date().toISOString(),
-      }));
+        // Filter by followed users
+        const filtered = all
+          .filter((r) => followingData.some((f) => f.id === r.author.id))
+          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-      // Filter by followed users
-      const filtered = all
-        .filter((r) => followingData.some((f) => f.id === r.author.id))
-        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        setFeed(filtered);
 
-      setFeed(filtered);
-
-      // Load likes for each review in the filtered feed
-      const likes = {};
-      await Promise.all(
-        filtered.map(async (rev) => {
-          try {
-            const data = await getReviewLikes(rev.id);
-            // assuming backend returns { userIds: [...] }
-            likes[rev.id] = data.userIds || [];
-          } catch (err) {
-            console.error('Failed to load likes for review', rev.id, err);
-            likes[rev.id] = [];
-          }
-        })
-      );
-      setLikesMap(likes);
-    } catch (err) {
-      console.error('Failed to load home data:', err);
+        // Load likes for each review in the filtered feed
+        const likes = {};
+        await Promise.all(
+          filtered.map(async (rev) => {
+            try {
+              const data = await getReviewLikes(rev.id);
+              // assuming backend returns { userIds: [...] }
+              likes[rev.id] = data.userIds || [];
+            } catch (err) {
+              console.error('Failed to load likes for review', rev.id, err);
+              likes[rev.id] = [];
+            }
+          })
+        );
+        setLikesMap(likes);
+      } catch (err) {
+        console.error('Failed to load home data:', err);
+      }
     }
-  }
 
-  loadHome();
-}, [user?.id]);
+    loadHome();
+  }, [user?.id]);
 
   function handleLogout() {
     if (onLogout) onLogout();
-    navigate('/');                                              
+    navigate('/');
   }
   const layout = useMemo(() => ({
     shell: {
@@ -237,9 +235,9 @@ export default function Home({ user, onLogout }) {
         <div style={layout.sideItem(true)}>Home</div>
         <div style={{ ...layout.sideItem(false), background: hoverSearch ? COLORS.card : 'transparent', transition: 'background .2s' }} onMouseEnter={() => setHoverSearch(true)} onMouseLeave={() => setHoverSearch(false)}
           onClick={() => navigate('/search')} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && navigate('/search')}
-          >Search </div>
+        >Search </div>
         <div style={layout.sideItem(false)}>Review</div>
-        <div style={{...layout.sideItem(false), background: hoverProfile ? COLORS.card : 'transparent', transition: 'background 0.2s ease'}}
+        <div style={{ ...layout.sideItem(false), background: hoverProfile ? COLORS.card : 'transparent', transition: 'background 0.2s ease' }}
           onMouseEnter={() => setHoverProfile(true)}
           onMouseLeave={() => setHoverProfile(false)}
           onClick={() => navigate('/profile')}
@@ -249,9 +247,10 @@ export default function Home({ user, onLogout }) {
         >
           Profile
         </div>
-        <div style={{...layout.sideItem(false),
-        background: hoverLogout ? COLORS.card : 'transparent',
-        transition: 'background 0.2s ease'
+        <div style={{
+          ...layout.sideItem(false),
+          background: hoverLogout ? COLORS.card : 'transparent',
+          transition: 'background 0.2s ease'
         }} onMouseEnter={() => setHoverLogout(true)} onMouseLeave={() => setHoverLogout(false)} onClick={handleLogout} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && handleLogout()}>Logout</div>
 
         <div style={{ marginTop: 'auto', paddingTop: 8, borderTop: `1px solid ${COLORS.border}`, display: 'flex', gap: 10, alignItems: 'center' }}>
@@ -287,7 +286,7 @@ export default function Home({ user, onLogout }) {
               fontWeight: 600,
               cursor: 'pointer',
             }}>Search</button>
-          
+
           <div style={{ marginLeft: 'auto', fontSize: 13, color: COLORS.dim }}>
             Signed in as <b>{user?.name}</b>
           </div>
@@ -352,7 +351,7 @@ export default function Home({ user, onLogout }) {
                     No activity yet. Follow people or channels to see reviews here.
                   </div>
                 )}
-              </div>              
+              </div>
             </div>
           </section>
 
@@ -376,13 +375,13 @@ export default function Home({ user, onLogout }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {following.length ? (
                   following.map((f) => (
-                  <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ width: 30, height: 30, borderRadius: 999, background: COLORS.soft, display: 'grid', placeItems: 'center', fontWeight: 700 }}>
-                      {(f.name || 'U').charAt(0)}
+                    <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: 30, height: 30, borderRadius: 999, background: COLORS.soft, display: 'grid', placeItems: 'center', fontWeight: 700 }}>
+                        {(f.name || 'U').charAt(0)}
+                      </div>
+                      <div>{f.name || f.id}</div>
                     </div>
-                    <div>{f.name || f.id}</div>
-                  </div>
-                ))
+                  ))
                 ) : (
                   <div style={{ color: COLORS.dim }}>You are not following anyone yet.</div>
                 )}
