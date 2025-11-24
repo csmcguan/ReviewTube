@@ -52,13 +52,14 @@ export async function getVideoReviews({ videoId, userId, startIndex, endIndex })
   return res.json(); // Array of reviews from the controller
 }
 
-export async function getFeedReviews() {
-  const res = await fetch(`${API_BASE}/reviews/feed`);
+// *** feed exists under the users router, so moved this to usersApi.js ***
+// export async function getFeedReviews() {
+//   const res = await fetch(`${API_BASE}/reviews/feed`);
 
-  if (!res.ok) {
-    const err = await res.text().catch(() => "");
-    throw new Error(`Failed to load feed: ${res.status} ${err}`);
-  }
+//   if (!res.ok) {
+//     const err = await res.text().catch(() => "");
+//     throw new Error(`Failed to load feed: ${res.status} ${err}`);
+//   }
 
-  return res.json(); // raw reviews from backend
-}
+//   return res.json(); // raw reviews from backend
+// }

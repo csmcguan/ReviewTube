@@ -52,10 +52,4 @@ router.get(
   reviewController.getReviewLikes  // to be implemented
 );
 
-// Home feed
-router.get(
-  "/feed",
-  reviewController.getFeed
-);
-
 export default router

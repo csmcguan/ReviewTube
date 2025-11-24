@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getFeedReviews } from '../services/reviewsApi';
+import { getFeedReviews } from '../services/usersApi';
 import { getFollowing } from '../services/usersApi';
 import { likeReview, unlikeReview, getReviewLikes } from '../services/likesApi';
 

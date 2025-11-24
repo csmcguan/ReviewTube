@@ -38,3 +38,14 @@ export async function getUserProfile(userId) {
   const data = await res.json();
   return data.user;
 }
+
+export async function getFeedReviews() {
+  const res = await fetch(`${API_BASE}/reviews/feed`);
+
+  if (!res.ok) {
+    const err = await res.text().catch(() => "");
+    throw new Error(`Failed to load feed: ${res.status} ${err}`);
+  }
+
+  return res.json(); // raw reviews from backend
+}

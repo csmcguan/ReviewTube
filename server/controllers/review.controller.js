@@ -145,23 +145,52 @@ export const reviewController = {
         }
     },
 
+    // FEED IN USERS NOW
     // Get reviews for home feed
-    async getFeed(req, res, next) {
-        try {
-            // Currently no filtering, just get all reviews, given time constraints
-            const reviews = await reviewService.getReviews({
-                type: null,       // no type filter
-                targetId: null,   // no target filter
-                userId: null,     // no user filter
-                startIndex: null, 
-                endIndex: null,
-            });
+    // async getFeed(req, res, next) {
+    //     try {
+    //         // Currently no filtering, just get all reviews, given time constraints
+    //         const reviews = await reviewService.getReviews({
+    //             type: null,       // no type filter
+    //             targetId: null,   // no target filter
+    //             userId: null,     // no user filter
+    //             startIndex: null, 
+    //             endIndex: null,
+    //         });
 
-            return res.status(200).json(reviews);
+    //         return res.status(200).json(reviews);
+    //     } catch (err) {
+    //         console.error("Get feed error:", err);
+    //         next(err);
+    //     }
+    // },
+
+    async likeReview(req, res, next) {
+        try {
+            const { reviewId } = req.params;
+            const { userId } = req.body;
         } catch (err) {
-            console.error("Get feed error:", err);
+            console.error("Like review error:", err);
             next(err);
         }
     },
 
+    async unlikeReview(req, res, next) {
+        try {
+            const { reviewId } = req.params;
+            const { userId } = req.body;
+        } catch (err) {
+            console.error("Unlike review error:", err);
+            next(err);
+        }
+    },
+
+    async getReviewLikes(req, res, next) {
+        try {
+            const { reviewId } = req.params;
+        } catch (err) {
+            console.error("Get review likes error:", err);
+            next(err);
+        }
+    }
 };
