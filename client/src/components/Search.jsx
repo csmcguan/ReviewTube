@@ -272,11 +272,6 @@ export default function Search({ user, onLogout }) {
   async function runSearch(reset = true) {
     if (!query.trim()) return;
 
-    // "users" mode is purely local / mock; we don't hit the backend for that.
-    if (mode === 'users') {
-      return;
-    }
-
     try {
       setErr('');
       setLoading(true);
