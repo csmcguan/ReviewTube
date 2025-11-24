@@ -19,7 +19,7 @@ export const userService = {
         }
 
         console.log("Signing up user:", email);
-        created = await dbManager.createUserEntry(name, email, password, "", new Date());
+        const created = await dbManager.createUserEntry(name, email, password, "", new Date());
 
         // we probably need to have the DB assign an id
         return { id: created._id.toString(), username: created.username, email: created.email };
