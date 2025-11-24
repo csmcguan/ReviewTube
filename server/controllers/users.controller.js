@@ -15,8 +15,14 @@ export const userController = {
             }
 
             const user = await userService.signup({ name, email, password });
-            console.log("User signed up:", user);
-            return res.status(201).json({ ok: true, user });
+
+            if (user) {
+                console.log("User signed up:", user);
+                return res.status(201).json({ ok: true, user });
+            } else {
+                console.error("Email already registered during signup:", email);
+                return res.status(409).json({ ok: false, error: "Email already registered" });
+            }
         } catch (err) {
             // dump the error
             console.error("Signup error:", err);

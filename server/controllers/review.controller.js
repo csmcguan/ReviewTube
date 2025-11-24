@@ -169,6 +169,14 @@ export const reviewController = {
         try {
             const { reviewId } = req.params;
             const { userId } = req.body;
+
+            if (!userId) {
+                console.error("Missing userId in likeReview");
+                return res.status(400).json({ ok: false, error: "Missing userId" });
+            }
+
+            await reviewService.likeReview({ reviewId, userId });
+            return res.json({ ok: true });
         } catch (err) {
             console.error("Like review error:", err);
             next(err);
@@ -179,6 +187,16 @@ export const reviewController = {
         try {
             const { reviewId } = req.params;
             const { userId } = req.body;
+
+            // make sure userId is given
+            if (!userId) {
+                console.error("Missing userId in unlikeReview");
+                return res.status(400).json({ ok: false, error: "Missing userId" });
+            }
+
+            // call service to unlike
+            await reviewService.unlikeReview({ reviewId, userId });
+            return res.json({ ok: true });
         } catch (err) {
             console.error("Unlike review error:", err);
             next(err);
@@ -188,6 +206,12 @@ export const reviewController = {
     async getReviewLikes(req, res, next) {
         try {
             const { reviewId } = req.params;
+
+            // call service to get likes
+            const data = await reviewService.getReviewLikes(reviewId);
+            
+            // return userIds and count
+            return res.json({ userIds: data.userIds, count: data.count });
         } catch (err) {
             console.error("Get review likes error:", err);
             next(err);

@@ -129,6 +129,7 @@ export class DBManager {
         userEntry.dateCreated = new Date().toLocaleDateString();
 
         await this.insertCollectionEntry(this.collUser(), userEntry);
+        return userEntry
     }
 
     // outputs email query to a user collection
@@ -260,6 +261,18 @@ export class DBManager {
         }
 
         return await this.queryCollection(this.collLikes(), query);
+    }
+
+    async deleteLikeEntries(_reviewID, _userID) {
+        const coll = this.database.collection(this.collLikes());
+        const query = {};
+        if (_reviewID !== null) {
+            query.reviewID = _reviewID;
+        }
+        if (_userID !== null) {
+            query.userID = _userID;
+        }
+        await coll.deleteMany(query);
     }
 
     async createCommentEntry(_reviewID, _userID, _comment) {
