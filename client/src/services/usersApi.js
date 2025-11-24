@@ -39,13 +39,26 @@ export async function getUserProfile(userId) {
   return data.user;
 }
 
-export async function getFeedReviews() {
-  const res = await fetch(`${API_BASE}/reviews/feed`);
+export async function getFeedReviews(userId, { startIndex = 0, count = 20 } = {}) {
+  const params = new URLSearchParams({
+    startIndex: String(startIndex),
+    count: String(count),
+  });
+
+  const res = await fetch(
+    `${API_BASE}/users/${encodeURIComponent(userId)}/feed?${params.toString()}`
+  );
 
   if (!res.ok) {
     const err = await res.text().catch(() => "");
     throw new Error(`Failed to load feed: ${res.status} ${err}`);
   }
 
-  return res.json(); // raw reviews from backend
+  const data = await res.json();
+  return data.feed || [];
+}
+
+export async function updateProfile({ userId, bio }) {
+  // No backend yet; UI handles local persistence.
+  return { ok: true };
 }

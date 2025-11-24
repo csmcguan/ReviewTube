@@ -140,7 +140,9 @@ export const userController = {
     async getUserFeed(req, res, next) {
         try {
             const { userId } = req.params;
-            const {startIndex = 0, count = 20} = req.body; // for indexing/pagination
+
+            const startIndex = parseInt(req.query.startIndex ?? "0", 10);
+            const count = parseInt(req.query.count ?? "20", 10);
 
             const feed = await userService.getUserFeed(userId, startIndex, count);
             if (!feed) {
@@ -155,13 +157,13 @@ export const userController = {
     },
     //Get followed users
     async getFollowing(req, res, next) {
-    try {
-        const { userId } = req.params;
-        const list = await userService.getFollowing(userId); // to be implemented
-        return res.json({ ok: true, following: list });
-    } catch (err) {
-        console.error("Get following error:", err);
-        next(err);
-    }
+        try {
+            const { userId } = req.params;
+            const list = await userService.getFollowing(userId); // to be implemented
+            return res.json({ ok: true, following: list });
+        } catch (err) {
+            console.error("Get following error:", err);
+            next(err);
+        }
     }
 };

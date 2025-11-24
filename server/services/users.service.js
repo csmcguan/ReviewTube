@@ -58,11 +58,21 @@ export const userService = {
 
     // get a user's profile
     async getProfile(userId) {
-        
+
     },
 
     async getUserFeed(userId, startIndex, count) {
-        // once database contains friends, etc.
-        // we will need an algorithm to generate a feed
+        // 1. Get all feed entries for this user from the DB
+        const allEntries = await dbManager.getUserFeedEntries(userId);
+
+        if (!allEntries || allEntries.length === 0) {
+            return [];
+        }
+
+        // 2. Paginate using the DBManager helper
+        const endIndex = startIndex + count;
+        const page = dbManager.sliceArray(allEntries, startIndex, endIndex);
+
+        return page;
     }
 };
