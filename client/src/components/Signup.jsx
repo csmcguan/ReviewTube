@@ -20,15 +20,24 @@ export default function Signup({ onSignup }) {
         body: JSON.stringify({ name, email, password })
       });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
+      
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
         throw new Error(data?.error || 'Sign up failed');
-      }
+    }
+       
+      
 
-      const data = await res.json();
+      const raw = data.user || {};
+      const user = {
+        id: raw.id,
+        name: raw.username || name,   // fallback to the name they typed
+        email: raw.email || email,
+      };
 
       // Option A: auto-login after signup
-      if (onSignup) onSignup(data.user);
+      if (onSignup) onSignup(user);
+      localStorage.setItem('rt_user', JSON.stringify(user));
       navigate('/home');
 
       // Option B (if backend doesn’t return user): navigate('/') to login instead.

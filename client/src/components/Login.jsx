@@ -32,14 +32,21 @@ export default function Login({ onLogin }) {
         body: JSON.stringify({ email, password })
       });
 
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
+      
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
         throw new Error(data?.error || 'Login failed');
-      }
+    }
+      
 
-      const data = await res.json();
-      onLogin(data.user);
-      localStorage.setItem('rt_user', JSON.stringify(data.user)); 
+       const raw = data.user || {};
+       const user = {
+          id: raw.id,
+          name: raw.username || raw.name || '',   // backend likely uses "username"
+          email: raw.email || email,
+        };
+      onLogin(user);
+      localStorage.setItem('rt_user', JSON.stringify(user)); 
       if (rememberMe) localStorage.setItem('rt_email', email);
       else localStorage.removeItem('rt_email');
       navigate('/home');
