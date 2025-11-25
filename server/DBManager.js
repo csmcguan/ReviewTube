@@ -106,7 +106,9 @@ export class DBManager {
     // inserts entry into collection
     // takes in a collection name string and entry object
     async insertCollectionEntry(_collection, _entry) {
-        await this.database.collection(_collection).insertOne(_entry);
+        // add missing return statement
+        const result = await this.database.collection(_collection).insertOne(_entry);
+        return result;
     }
 
     // outputs query to a collection

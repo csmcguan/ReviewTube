@@ -30,6 +30,9 @@ router.post(
     userController.blockUser
 );
 
+// search
+router.get("/search", userController.searchUsers);
+
 // Profiles
 router.get("/me", userController.getMyProfile);         // current logged-in user
 router.get("/:userId", userController.getUserProfile);  // view another user's profile

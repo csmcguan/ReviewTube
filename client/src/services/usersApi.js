@@ -59,6 +59,23 @@ export async function getFeedReviews(userId, { startIndex = 0, count = 20 } = {}
 }
 
 export async function updateProfile({ userId, bio }) {
-  // No backend yet; UI handles local persistence.
+  // no backend endpoint
   return { ok: true };
+}
+
+export async function searchUsers({ query, maxResults = 10 }) {
+  const params = new URLSearchParams({
+    q: query,
+    maxResults: String(maxResults),
+  });
+
+  const res = await fetch(`${API_BASE}/users/search?${params.toString()}`);
+
+  if (!res.ok) {
+    const err = await res.text().catch(() => "");
+    throw new Error(`Failed to search users: ${res.status} ${err}`);
+  }
+
+  const data = await res.json();
+  return data.users || [];
 }

@@ -43,17 +43,68 @@ export const userService = {
             console.error("Attempted to follow self:", userId);
             throw new Error("Cannot follow yourself");
         }
-    },
 
+        // check if already following
+        const existing = await dbManager.getFriendEntries(userId, targetId, null);
+
+        if (!existing || existing.length === 0) {
+            console.log("Creating new follow entry from", userId, "to", targetId);
+            // create a new following entry
+            await dbManager.createFriendEntry(userId, targetId, "following");
+        } else {
+            console.log("Updating existing follow entry from", userId, "to", targetId);
+            // Update status to following
+            await dbManager.updateFriendEntries(userId, targetId, "following");
+        }
+    },
 
     // handle unfollow
     async unfollow({ userId, targetId }) {
+        if (userId === targetId) {
+            return;
+        }
 
+        // make sure there actually is a relationship
+        const existing = await dbManager.getFriendEntries(userId, targetId, null);
+        if (existing && existing.length > 0) {
+            console.log("Removing follow entry from", userId, "to", targetId);
+            await dbManager.updateFriendEntries(userId, targetId, "none");
+        }
     },
 
     // handle blocking a user
     async blockUser({ userId, targetId }) {
 
+    },
+
+    async getFollowing(userId) {
+        // get followers
+        console.log("Fetching following list for user:", userId);
+        const entries = await dbManager.getFriendEntries(userId, null, "following");
+        if (!entries || entries.length === 0) {
+            console.log("No following entries found for user:", userId);
+            return [];
+        }
+
+        const results = [];
+        for (const fr of entries) {
+            try {
+                const u = await dbManager.getUserDataID(fr.secondID);
+
+                if (!u) {
+                    continue;
+                }
+
+                results.push({
+                    id: u._id.toString(),
+                    name: u.username,
+                    email: u.email,
+                });
+            } catch (err) {
+                console.error("Error fetching followed user data:", err);
+            }
+        }
+        return results;
     },
 
     // get a user's profile
@@ -72,17 +123,100 @@ export const userService = {
     },
 
     async getUserFeed(userId, startIndex, count) {
-        // 1. Get all feed entries for this user from the DB
-        const allEntries = await dbManager.getUserFeedEntries(userId);
+        console.log("Fetching feed for user:", userId);
+        // get my friends
+        const followingEntries = await dbManager.getFriendEntries(
+            userId,
+            null,           // any secondID
+            "following"     // status
+        );
 
-        if (!allEntries || allEntries.length === 0) {
+        // get their user IDs
+        const followingIds = (followingEntries || []).map((fr) => fr.secondID);
+
+        // want to see my own reviews in my feed
+        const authorIds = [userId, ...followingIds];
+
+        if (authorIds.length === 0) {
+            console.log("No feed content found");
             return [];
         }
 
-        // 2. Paginate using the DBManager helper
+        // get reviews for each user
+        const allEntries = await dbManager.queryCollection(
+            dbManager.collReview(),
+            { userId: { $in: authorIds } }
+        );
+
+        if (!allEntries || allEntries.length === 0) {
+            console.log("User has friends, but no reviews written");
+            return [];
+        }
+
+        // sort by time
+        allEntries.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        // slice if needed
         const endIndex = startIndex + count;
-        const page = dbManager.sliceArray(allEntries, startIndex, endIndex);
+        const page = allEntries.slice(startIndex, endIndex);
 
         return page;
-    }
+    },
+
+    async searchUsers({ query, maxUsers = 10, maxReviewsPerUser = 3 }) {
+        const q = String(query || "").trim();
+        if (!q) return [];
+
+        // case-insensitive regex for username
+        const regex = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+
+        // 1. find matching users by username
+        const rawUsers = await dbManager.queryCollection(
+            dbManager.collUser(),
+            { username: { $regex: regex } }
+        );
+
+        if (!rawUsers || rawUsers.length === 0) return [];
+
+        const limitedUsers = rawUsers.slice(0, maxUsers);
+        const results = [];
+
+        for (const u of limitedUsers) {
+            const userId = u._id.toString();
+
+            // 2. get this user's feed entries (newest first)
+            const allReviews = await dbManager.getUserFeedEntries(userId);
+            const recent = (allReviews || []).slice(0, maxReviewsPerUser);
+
+            // 3. shape reviews for the UI
+            const shapedReviews = recent.map((r) => {
+                const baseTitle =
+                    r.type === "video"
+                        ? `Review on video ${r.targetId}`
+                        : r.type === "channel"
+                            ? `Review on channel ${r.targetId}`
+                            : "Review";
+
+                const text = r.reviewText || "";
+                const snippet =
+                    text.length > 120 ? text.slice(0, 117).trimEnd() + "..." : text;
+
+                return {
+                    id: r._id.toString(),
+                    title: baseTitle,
+                    snippet,
+                };
+            });
+
+            results.push({
+                id: userId,
+                name: u.username,
+                email: u.email,
+                bio: u.profileinfo ?? "",
+                reviews: shapedReviews,
+            });
+        }
+
+        return results;
+    },
 };
