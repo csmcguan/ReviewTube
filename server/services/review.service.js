@@ -4,10 +4,10 @@ export const reviewService = {
     // create a review.
     // we can use the same function for videos and channels by
     // specifying the type
-    async createReview({ type, targetId, rating, reviewText, userId }) {
-        console.log("Creating review:", { type, targetId, rating, reviewText, userId });
+    async createReview({ type, targetId, rating, reviewText, userId, targetTitle, targetChannel }) {
+        console.log("Creating review:", { type, targetId, rating, reviewText, userId, targetTitle, targetChannel });
         const db = new DBManager();
-        const created = await db.createReviewEntry(type, targetId, rating, reviewText, userId);
+        const created = await db.createReviewEntry(type, targetId, rating, reviewText, userId, targetTitle, targetChannel);
         return created;
     },
 

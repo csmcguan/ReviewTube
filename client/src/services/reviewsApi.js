@@ -1,6 +1,6 @@
 const API_BASE = process.env.REACT_APP_API_URL || "http://localhost:5000/api";
 
-export async function postVideoReview({ videoId, userId, rating, text }) {
+export async function postVideoReview({ videoId, userId, rating, text, videoTitle, channelTitle }) {
   const res = await fetch(`${API_BASE}/reviews/video/${encodeURIComponent(videoId)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -8,6 +8,8 @@ export async function postVideoReview({ videoId, userId, rating, text }) {
       rating,
       reviewText: text,
       userId,
+      videoTitle,
+      channelTitle,
     }),
   });
 

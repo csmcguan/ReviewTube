@@ -160,6 +160,27 @@ export const userService = {
         const endIndex = startIndex + count;
         const page = allEntries.slice(startIndex, endIndex);
 
+        // Build a map of userId -> username so we don't query the same user repeatedly
+        const authorNameMap = new Map();
+        for (const r of page) {
+            if (!authorNameMap.has(r.userId)) {
+                const u = await dbManager.getUserDataID(r.userId);
+                authorNameMap.set(r.userId, u?.username || null);
+            }
+        }
+
+        // Shape the objects for the frontend
+        const shaped = page.map((r) => ({
+            // keep original fields
+            ...r,
+            id: r._id?.toString?.() || r._id || r.id,
+            authorName: authorNameMap.get(r.userId) || null,
+            videoTitle:
+                r.type === "video" || r.type === "channel"
+                    ? r.targetTitle || r.targetId
+                    : r.targetId,
+        }));
+
         return page;
     },
 
@@ -190,12 +211,14 @@ export const userService = {
 
             // 3. shape reviews for the UI
             const shapedReviews = recent.map((r) => {
-                const baseTitle =
+                const fallbackTitle =
                     r.type === "video"
                         ? `Review on video ${r.targetId}`
                         : r.type === "channel"
                             ? `Review on channel ${r.targetId}`
                             : "Review";
+
+                const baseTitle = r.targetTitle || fallbackTitle;
 
                 const text = r.reviewText || "";
                 const snippet =

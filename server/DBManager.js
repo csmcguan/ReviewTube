@@ -180,14 +180,17 @@ export class DBManager {
     }
 
     // Creates a review entry
-    async createReviewEntry(_type, _targetId, _rating, _reviewText, _userId) {
-        const reviewEntry = {};
-        reviewEntry.type = _type;
-        reviewEntry.targetId = _targetId;
-        reviewEntry.rating = _rating;
-        reviewEntry.reviewText = _reviewText;
-        reviewEntry.userId = _userId;
-        reviewEntry.createdAt = new Date().toISOString();
+    async createReviewEntry(_type, _targetId, _rating, _reviewText, _userId, _targetTitle, _targetChannel) {
+        const reviewEntry = {
+            type: _type,
+            targetId: _targetId,
+            rating: _rating,
+            reviewText: _reviewText,
+            userId: _userId,
+            createdAt: new Date().toISOString(),
+            targetTitle: _targetTitle,
+            targetChannel: _targetChannel,
+        };
 
         const result = await this.insertCollectionEntry(this.collReview(), reviewEntry);
 

@@ -9,7 +9,7 @@ export const reviewController = {
     async writeVideoReview(req, res, next) {
         try {
             const { videoId } = req.params;
-            const { rating, reviewText, userId } = req.body;
+            const { rating, reviewText, userId, videoTitle, channelTitle } = req.body;
 
             if (!rating || !reviewText) {
                 console.error("No review data given");
@@ -26,7 +26,9 @@ export const reviewController = {
                 targetId: videoId,
                 rating,
                 reviewText: reviewText,
-                userId: userId
+                userId: userId,
+                targetTitle: videoTitle,
+                targetChannel: channelTitle,
             });
 
             return res.status(201).json({ ok: true });
@@ -209,7 +211,7 @@ export const reviewController = {
 
             // call service to get likes
             const data = await reviewService.getReviewLikes(reviewId);
-            
+
             // return userIds and count
             return res.json({ userIds: data.userIds, count: data.count });
         } catch (err) {
