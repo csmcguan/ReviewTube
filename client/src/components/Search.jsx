@@ -480,7 +480,7 @@ export default function Search({ user, onLogout }) {
 
         <div style={{ marginTop: 'auto', paddingTop: 8, borderTop: `1px solid ${COLORS.border}`, display: 'flex', gap: 10, alignItems: 'center' }}>
           <div style={{ width: 36, height: 36, borderRadius: 999, background: COLORS.card, display: 'grid', placeItems: 'center', fontWeight: 700 }}>
-            {(user?.name || 'A')[0]}
+            {(user?.name ||  '?').toUpperCase()}
           </div>
           <div>
             <div style={{ fontWeight: 600 }}>{user?.name}</div>

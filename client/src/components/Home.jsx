@@ -361,10 +361,10 @@ export default function Home({ user, onLogout }) {
               <h3 style={{ marginTop: 0 }}>Your Profile</h3>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ width: 40, height: 40, borderRadius: 999, background: COLORS.soft, display: 'grid', placeItems: 'center', fontWeight: 700 }}>
-                  {(user?.name || 'A')[0]}
+                  {(user?.name || '?').toUpperCase()}
                 </div>
                 <div>
-                  <div style={{ fontWeight: 700 }}>{user?.name || 'Abyan'}</div>
+                  <div style={{ fontWeight: 700 }}>{user?.name || '(No name)'}</div>
                   <div style={{ color: COLORS.dim, fontSize: 13 }}>{user?.email || 'demo@reviewtube.app'}</div>
                 </div>
               </div>
