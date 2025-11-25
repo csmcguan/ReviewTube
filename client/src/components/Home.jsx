@@ -107,19 +107,17 @@ export default function Home({ user, onLogout }) {
       if (!user?.id) return;
 
       try {
-        // Load who the user follows + all reviews in parallel
-        const [followingData, rawReviews] = await Promise.all([
-          getFollowing(user.id),
-          getFeedReviews(user.id, { startIndex: 0, count: 50 }),
-        ]);
-        setFollowing(followingData || []);
+        const rawReviews = await getFeedReviews(user.id, {
+          startIndex: 0,
+          count: 50,
+        });
 
         // Normalize reviews to match UI shape
         const all = (rawReviews || []).map((r) => ({
           id: String(r._id || r.id),
           author: {
             id: r.userId,
-            name: r.authorName || `User ${r.userId}`, // adjust if backend adds name
+            name: r.authorName || `User ${r.userId}`,
             email: '',
           },
           videoTitle: r.videoTitle || r.targetId,
@@ -128,17 +126,14 @@ export default function Home({ user, onLogout }) {
           createdAt: r.createdAt || new Date().toISOString(),
         }));
 
-        // Filter by followed users
-        const filtered = all
-          .filter((r) => followingData.some((f) => f.id === r.author.id))
-          .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-        setFeed(filtered);
+        // make sure sorted
+        const sorted = all.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        setFeed(sorted);
 
         // Load likes for each review in the filtered feed
         const likes = {};
         await Promise.all(
-          filtered.map(async (rev) => {
+          sorted.map(async (rev) => {
             try {
               const data = await getReviewLikes(rev.id);
               // assuming backend returns { userIds: [...] }
