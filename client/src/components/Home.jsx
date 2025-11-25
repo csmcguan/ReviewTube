@@ -359,7 +359,7 @@ export default function Home({ user, onLogout }) {
                   {(user?.name || 'A')[0]}
                 </div>
                 <div>
-                  <div style={{ fontWeight: 700 }}>{user?.name || 'Abyan'}</div>
+                  <div style={{ fontWeight: 700 }}>{user?.name || '(No name)'}</div>
                   <div style={{ color: COLORS.dim, fontSize: 13 }}>{user?.email || 'demo@reviewtube.app'}</div>
                 </div>
               </div>
