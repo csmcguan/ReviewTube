@@ -165,7 +165,7 @@ export const userController = {
     async getFollowing(req, res, next) {
         try {
             const { userId } = req.params;
-            const list = await userService.getFollowing(userId); // to be implemented
+            const list = await userService.getFollowing(userId); // now implemented!
             return res.json({ ok: true, following: list });
         } catch (err) {
             console.error("Get following error:", err);
