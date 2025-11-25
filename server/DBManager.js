@@ -180,7 +180,7 @@ export class DBManager {
     }
 
     // Creates a review entry
-    async createReviewEntry(_type, _targetId, _rating, _reviewText, _userId) {
+    async createReviewEntry(_type, _targetId, _rating, _reviewText, _userId, _title, _author) {
         const reviewEntry = {};
         reviewEntry.type = _type;
         reviewEntry.targetId = _targetId;
@@ -188,6 +188,8 @@ export class DBManager {
         reviewEntry.reviewText = _reviewText;
         reviewEntry.userId = _userId;
         reviewEntry.createdAt = new Date().toISOString();
+        reviewEntry.title = _title;
+        reviewEntry.author = _author;
 
         const result = await this.insertCollectionEntry(this.collReview(), reviewEntry);
 

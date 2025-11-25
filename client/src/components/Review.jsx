@@ -238,6 +238,7 @@ function saveReviewOrComment() {
       // New review via backend
       const result = await postVideoReview({
         videoId: selected?.id,
+        videoTitle: selected?.title,
         userId: user.id,
         rating,
         text,

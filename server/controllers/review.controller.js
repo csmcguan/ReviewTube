@@ -9,7 +9,7 @@ export const reviewController = {
     async writeVideoReview(req, res, next) {
         try {
             const { videoId } = req.params;
-            const { rating, reviewText, userId } = req.body;
+            const { rating, reviewText, userId, title } = req.body;
 
             if (!rating || !reviewText) {
                 console.error("No review data given");
@@ -26,7 +26,7 @@ export const reviewController = {
                 targetId: videoId,
                 rating,
                 reviewText: reviewText,
-                userId: userId
+                userId: userId, title
             });
 
             return res.status(201).json({ ok: true });
@@ -63,7 +63,7 @@ export const reviewController = {
     async writeChannelReview(req, res, next) {
         try {
             const { channelId } = req.params;
-            const { rating, reviewText, userId } = req.body;
+            const { rating, reviewText, userId, title } = req.body;
 
             if (!rating || !reviewText) {
                 console.error("Missing review content");
@@ -76,6 +76,7 @@ export const reviewController = {
                 rating,
                 reviewText,
                 userId: userId || 1,
+                title
             });
 
             return res.status(201).json({ ok: true });

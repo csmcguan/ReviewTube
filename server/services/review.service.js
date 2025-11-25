@@ -4,10 +4,21 @@ export const reviewService = {
     // create a review.
     // we can use the same function for videos and channels by
     // specifying the type
-    async createReview({ type, targetId, rating, reviewText, userId }) {
-        console.log("Creating review:", { type, targetId, rating, reviewText, userId });
+    async createReview({ type, targetId, rating, reviewText, userId, title }) {
+
+        let authorName = null;
+        try {
+            const user = await db.getUserDataID(userId);
+            if (user) {
+                authorName = user.username;
+            }
+        } catch (e) {
+            console.error("Failed to lookup user for review authorName:", e);
+        }
+
+        console.log("Creating review:", { type, targetId, rating, reviewText, userId, title, authorName });
         const db = new DBManager();
-        const created = await db.createReviewEntry(type, targetId, rating, reviewText, userId);
+        const created = await db.createReviewEntry(type, targetId, rating, reviewText, userId, title, authorName);
         return created;
     },
 
