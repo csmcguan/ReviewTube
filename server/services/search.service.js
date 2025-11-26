@@ -1,14 +1,29 @@
 import { env } from "../config/env.js";
 
-export async function youtubeSearch({ query, type, maxResults = 10 }) {
-    console.log("Searching YouTube:", { query, type, maxResults });
+export async function youtubeSearch({ query, type, maxResults = 10, pageToken }) {
+    console.log("Searching YouTube:", { query, type, maxResults, pageToken });
+
+    // Map frontend mode -> YouTube API type
+    let ytType = type;
+    if (type === "videos") {
+        ytType = "video";
+    } else if (type === "channels") {
+        ytType = "channel";
+    }
+
     const params = new URLSearchParams({
         part: "snippet",
         q: query,
         maxResults: String(maxResults),
-        type: type,
+        type: ytType,
         key: env.YT_API_KEY,
     });
+
+    console.log(env.YT_API_KEY);
+
+    if (pageToken) {
+        params.set("pageToken", pageToken);
+    }
 
     const res = await fetch(`https://www.googleapis.com/youtube/v3/search?${params}`);
 

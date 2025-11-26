@@ -21,7 +21,7 @@ router.post(
 // unfollow another user
 router.post(
     "/:userId/unfollow/:targetId",
-    userController.blockUser
+    userController.unfollow
 );
 
 // block another user
@@ -30,11 +30,20 @@ router.post(
     userController.blockUser
 );
 
+// search
+router.get("/search", userController.searchUsers);
+
 // Profiles
 router.get("/me", userController.getMyProfile);         // current logged-in user
 router.get("/:userId", userController.getUserProfile);  // view another user's profile
 
 // feed
 router.get("/:userId/feed", userController.getUserFeed);
+
+// followed users
+router.get(
+  "/:userId/following",
+  userController.getFollowing      // to be implemented
+);
 
 export default router;

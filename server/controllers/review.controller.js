@@ -21,7 +21,7 @@ export const reviewController = {
                 return res.status(400).json({ error: "Rating out of bounds" });
             }
 
-            const review = await reviewService.createReview({
+            await reviewService.createReview({
                 type: "video",
                 targetId: videoId,
                 rating,
@@ -29,7 +29,7 @@ export const reviewController = {
                 userId: userId
             });
 
-            res.status(201).json(review);
+            return res.status(201).json({ ok: true });
         } catch (err) {
             console.error("Write video review error:", err);
             next(err);
@@ -41,15 +41,15 @@ export const reviewController = {
     async getVideoReviews(req, res, next) {
         try {
             const { videoId } = req.params;
-            const { userId, startIndex, endIndex } = req.body;
+            const { userId, startIndex, endIndex } = req.query;
 
             // fetch the comments requested
             const reviews = await reviewService.getReviews({
                 type: "video",
                 targetId: videoId,
-                userId: userId,
-                startIndex: startIndex,
-                endIndex: endIndex
+                userId: userId ?? null,
+                startIndex: startIndex !== undefined ? Number(startIndex) : null,
+                endIndex: endIndex !== undefined ? Number(endIndex) : null,
             });
 
             res.status(200).json(reviews);
@@ -70,15 +70,15 @@ export const reviewController = {
                 return res.status(400).json({ error: "Missing review content" });
             }
 
-            const review = await reviewService.createReview({
+            await reviewService.createReview({
                 type: "channel",
                 targetId: channelId,
                 rating,
-                comment: reviewText,
+                reviewText,
                 userId: userId || 1,
             });
 
-            res.status(201).json(review);
+            return res.status(201).json({ ok: true });
         } catch (err) {
             console.error("Write channel review error:", err);
             next(err);
@@ -92,9 +92,12 @@ export const reviewController = {
             const reviews = await reviewService.getReviews({
                 type: "channel",
                 targetId: channelId,
+                userId: userId ?? null,
+                startIndex: startIndex !== undefined ? Number(startIndex) : null,
+                endIndex: endIndex !== undefined ? Number(endIndex) : null,
             });
 
-            res.status(200).json(reviews);
+            return res.status(200).json(reviews);
         } catch (err) {
             console.error("Get channel reviews error:", err);
             next(err);
@@ -116,13 +119,13 @@ export const reviewController = {
                 return res.status(400).json({ error: "Missing comment text" });
             }
 
-            const comment = await reviewService.createComment({
+            const comment = await reviewService.createComment({//Create comment hasn't been implemented yet in service
                 reviewId,
                 text,
                 userId: userId || 1,
             });
 
-            res.status(201).json(comment);
+            return res.status(201).json(comment);
         } catch (err) {
             console.error("Post review comment error:", err);
             next(err);
@@ -133,12 +136,85 @@ export const reviewController = {
         try {
             const { reviewId } = req.params;
 
-            const comments = await reviewService.getComments(reviewId);
+            const comments = await reviewService.getComments(reviewId);//get comments hasn't been implemented yet in service
 
-            res.status(200).json(comments);
+            return res.status(200).json(comments);
         } catch (err) {
             console.error("Get review comments error:", err);
             next(err);
         }
     },
+
+    // FEED IN USERS NOW
+    // Get reviews for home feed
+    // async getFeed(req, res, next) {
+    //     try {
+    //         // Currently no filtering, just get all reviews, given time constraints
+    //         const reviews = await reviewService.getReviews({
+    //             type: null,       // no type filter
+    //             targetId: null,   // no target filter
+    //             userId: null,     // no user filter
+    //             startIndex: null, 
+    //             endIndex: null,
+    //         });
+
+    //         return res.status(200).json(reviews);
+    //     } catch (err) {
+    //         console.error("Get feed error:", err);
+    //         next(err);
+    //     }
+    // },
+
+    async likeReview(req, res, next) {
+        try {
+            const { reviewId } = req.params;
+            const { userId } = req.body;
+
+            if (!userId) {
+                console.error("Missing userId in likeReview");
+                return res.status(400).json({ ok: false, error: "Missing userId" });
+            }
+
+            await reviewService.likeReview({ reviewId, userId });
+            return res.json({ ok: true });
+        } catch (err) {
+            console.error("Like review error:", err);
+            next(err);
+        }
+    },
+
+    async unlikeReview(req, res, next) {
+        try {
+            const { reviewId } = req.params;
+            const { userId } = req.body;
+
+            // make sure userId is given
+            if (!userId) {
+                console.error("Missing userId in unlikeReview");
+                return res.status(400).json({ ok: false, error: "Missing userId" });
+            }
+
+            // call service to unlike
+            await reviewService.unlikeReview({ reviewId, userId });
+            return res.json({ ok: true });
+        } catch (err) {
+            console.error("Unlike review error:", err);
+            next(err);
+        }
+    },
+
+    async getReviewLikes(req, res, next) {
+        try {
+            const { reviewId } = req.params;
+
+            // call service to get likes
+            const data = await reviewService.getReviewLikes(reviewId);
+            
+            // return userIds and count
+            return res.json({ userIds: data.userIds, count: data.count });
+        } catch (err) {
+            console.error("Get review likes error:", err);
+            next(err);
+        }
+    }
 };

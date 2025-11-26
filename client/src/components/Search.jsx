@@ -1,6 +1,11 @@
-import { useEffect,useMemo, useState } from 'react';
+/* eslint-disable no-unused-vars */
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLocation } from 'react-router-dom';
+import { likeReview, unlikeReview } from '../services/likesApi';
+import { followUser, unfollowUser, getFollowing, searchUsers } from '../services/usersApi';
+import { searchMedia } from '../services/searchApi';
+
 
 const COLORS = {
   bg: '#0f0f10',
@@ -12,12 +17,7 @@ const COLORS = {
   soft: '#151619',
 };
 
-const readLikes = () => {
-   try { return JSON.parse(localStorage.getItem('rt_likes') || '{}'); } catch { return {}; }
- };
-const writeLikes = (m) => localStorage.setItem('rt_likes', JSON.stringify(m));
-const likeCountFor = (id) => (readLikes()[id] || []).length;
-const userHasLiked = (id, uid) => (readLikes()[id] || []).includes(uid);
+
 
 const MODES = ['videos', 'channels', 'users'];
 
@@ -112,6 +112,8 @@ export default function Search({ user, onLogout }) {
   const [channelResults, setChannelResults] = useState([]);
   const [expanded, setExpanded] = useState({});     // channelId -> [{id,title,thumb}...]
 
+  const [userResults, setUserResults] = useState([]); // users
+
   // sidebar hover states
   const [hoverHome, setHoverHome] = useState(false);
   //const [hoverSearch, setHoverSearch] = useState(false);
@@ -119,83 +121,201 @@ export default function Search({ user, onLogout }) {
   const [hoverProfile, setHoverProfile] = useState(false);
   const [hoverLogout, setHoverLogout] = useState(false);
   // eslint-disable-next-line no-unused-vars
-  const [likeBump, setLikeBump] = useState(0);
   const loc = useLocation();
   const params = new URLSearchParams(loc.search);
   const initialQ = params.get('q') || '';
   const [query, setQuery] = useState(initialQ);
+  const [likesMap, setLikesMap] = useState({});
+  const [following, setFollowing] = useState([]);
+  const followingIds = useMemo(
+    () => following.map((f) => f.id),
+    [following]
+  );
+  const isFollowing = (userId) => followingIds.includes(userId);
 
   useEffect(() => {
-  if (initialQ) runSearch(true);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    async function loadFollowing() {
+      if (!user?.id) return;
+      try {
+        const data = await getFollowing(user.id);
+        setFollowing(data || []);
+      } catch (err) {
+        console.error('Failed to load following:', err);
+      }
+    }
+
+    loadFollowing();
+  }, [user?.id]);
+
+  const likeCountFor = (id) => (likesMap[id]?.length || 0);
+
+  const userHasLiked = (id, uid) => {
+    if (!uid) return false;
+    const arr = likesMap[id] || [];
+    return arr.includes(uid);
+  };
+
+  async function toggleLike(reviewId) {
+    if (!user?.id) return;
+
+    const already = userHasLiked(reviewId, user.id);
+
+    try {
+      if (already) {
+        await unlikeReview({ reviewId, userId: user.id });
+      } else {
+        await likeReview({ reviewId, userId: user.id });
+      }
+
+      // Optimistic local update
+      setLikesMap((prev) => {
+        const current = prev[reviewId] || [];
+        let next;
+        if (already) {
+          next = current.filter((id) => id !== user.id);
+        } else {
+          next = current.includes(user.id) ? current : [...current, user.id];
+        }
+        return { ...prev, [reviewId]: next };
+      });
+    } catch (err) {
+      console.error('Failed to toggle like:', err);
+    }
+  }
+  async function handleToggleFollow(targetUserId, targetName) {
+    if (!user?.id) return;
+
+    const already = isFollowing(targetUserId);
+
+    try {
+      if (already) {
+        await unfollowUser({ userId: user.id, targetId: targetUserId });
+        setFollowing((prev) => prev.filter((f) => f.id !== targetUserId));
+      } else {
+        await followUser({ userId: user.id, targetId: targetUserId });
+        setFollowing((prev) => [...prev, { id: targetUserId, name: targetName }]);
+      }
+    } catch (err) {
+      console.error('Failed to toggle follow:', err);
+    }
+  }
+
+
+
+
+
+  useEffect(() => {
+    if (initialQ) runSearch(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-
-  function toggleLikeLocal(reviewId) {
-   if (!user?.id) return;
-   const map = readLikes();
-   const arr = map[reviewId] || [];
-   const i = arr.indexOf(user.id);
-   if (i >= 0) arr.splice(i, 1); else arr.push(user.id);
-   map[reviewId] = arr;
-   writeLikes(map);
-   setLikeBump((n) => n + 1);
- }
 
   function handleLogout() {
     onLogout?.();
     navigate('/');
   }
 
+  // USE BACKEND NOW
+  // async function runSearch(reset = true) {
+  //   if (!query.trim()) return;
+  //   try {
+  //     setErr('');
+  //     setLoading(true);
+  //     setNextPage(null);
+
+  //     if (mode === 'videos') {
+  //       const data = await ytSearchVideos(query, reset ? undefined : nextPage);
+  //       const items = (data.items || []).map((it) => ({
+  //         id: it.id.videoId,
+  //         title: it.snippet.title,
+  //         channel: it.snippet.channelTitle,
+  //         thumb: it.snippet.thumbnails.medium?.url || it.snippet.thumbnails.default?.url,
+  //         publishedAt: new Date(it.snippet.publishedAt).toLocaleDateString(),
+  //       }));
+  //       setVideoResults((v) => (reset ? items : [...v, ...items]));
+  //       setNextPage(data.nextPageToken || null);
+  //     } else if (mode === 'channels') {
+  //       const data = await ytSearchChannels(query, reset ? undefined : nextPage);
+
+  //       // Basic items from search.list
+  //       const items = (data.items || []).map((it) => ({
+  //           id: it.id.channelId,
+  //           title: it.snippet.title,
+  //           description: it.snippet.description,
+  //       }));
+
+  //       // Fetch full thumbnails from channels.list
+  //       if (items.length) {
+  //           const details = await ytGetChannels(items.map(i => i.id));
+  //           const byId = new Map(
+  //           (details.items || []).map(ch => [
+  //               ch.id,
+  //               ch.snippet?.thumbnails?.high?.url ||
+  //               ch.snippet?.thumbnails?.medium?.url ||
+  //               ch.snippet?.thumbnails?.default?.url ||
+  //               null
+  //           ])
+  //           );
+  //           items.forEach(i => { i.thumb = byId.get(i.id) || null; });
+  //       }
+
+  //       setChannelResults(v => (reset ? items : [...v, ...items]));
+  //       setNextPage(data.nextPageToken || null);
+  //     }
+  //     // users mode uses mock filter only
+  //   } catch (e) {
+  //     setErr(e.message);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // }
+
   async function runSearch(reset = true) {
     if (!query.trim()) return;
+
     try {
       setErr('');
       setLoading(true);
-      setNextPage(null);
 
-      if (mode === 'videos') {
-        const data = await ytSearchVideos(query, reset ? undefined : nextPage);
-        const items = (data.items || []).map((it) => ({
-          id: it.id.videoId,
-          title: it.snippet.title,
-          channel: it.snippet.channelTitle,
-          thumb: it.snippet.thumbnails.medium?.url || it.snippet.thumbnails.default?.url,
-          publishedAt: new Date(it.snippet.publishedAt).toLocaleDateString(),
-        }));
-        setVideoResults((v) => (reset ? items : [...v, ...items]));
-        setNextPage(data.nextPageToken || null);
-      } else if (mode === 'channels') {
-        const data = await ytSearchChannels(query, reset ? undefined : nextPage);
+      if (reset) {
+        // new search -> reset pagination + results
+        setNextPage(null);
+        if (mode === 'videos') {
+          setVideoResults([]);
+        } else if (mode === 'channels') {
+          setChannelResults([]);
+        } else if (mode === 'users') {
+          setUserResults([]);
+        }
+      }
 
-        // Basic items from search.list
-        const items = (data.items || []).map((it) => ({
-            id: it.id.channelId,
-            title: it.snippet.title,
-            description: it.snippet.description,
-        }));
+      // search for videos
+      if (mode === 'videos' || mode === 'channels') {
+        const data = await searchMedia({
+          query,
+          type: mode,                        // 'videos' | 'channels'
+          maxResults: 10,
+          pageToken: reset ? undefined : nextPage,
+        });
 
-        // Fetch full thumbnails from channels.list
-        if (items.length) {
-            const details = await ytGetChannels(items.map(i => i.id));
-            const byId = new Map(
-            (details.items || []).map(ch => [
-                ch.id,
-                ch.snippet?.thumbnails?.high?.url ||
-                ch.snippet?.thumbnails?.medium?.url ||
-                ch.snippet?.thumbnails?.default?.url ||
-                null
-            ])
-            );
-            items.forEach(i => { i.thumb = byId.get(i.id) || null; });
+        const items = data.items || [];
+
+        if (mode === 'videos') {
+          // backend already shaped items with { id, title, channel, thumb, publishedAt }
+          setVideoResults(prev => (reset ? items : [...prev, ...items]));
+        } else if (mode === 'channels') {
+          // backend already shaped items with { id, title, description, thumb }
+          setChannelResults(prev => (reset ? items : [...prev, ...items]));
         }
 
-        setChannelResults(v => (reset ? items : [...v, ...items]));
         setNextPage(data.nextPageToken || null);
+      } else if (mode === 'users') {  // search for users
+        const users = await searchUsers({ query, maxResults: 10 });
+        setUserResults(users);
+        setNextPage(null);
       }
-      // users mode uses mock filter only
     } catch (e) {
-      setErr(e.message);
+      setErr(e.message || 'Search failed');
     } finally {
       setLoading(false);
     }
@@ -226,21 +346,36 @@ export default function Search({ user, onLogout }) {
     }
   }
 
+  // USE BACKEND
+  // const filteredUsers = useMemo(() => {
+  //   if (mode !== 'users') return [];
+  //   const q = query.toLowerCase();
+  //   return MOCK_USERS
+  //     .filter((u) => u.name.toLowerCase().includes(q))
+  //     .map((u) => ({
+  //       ...u,
+  //       reviews: u.reviews.filter(
+  //         (r) =>
+  //           r.title.toLowerCase().includes(q) ||
+  //           r.snippet.toLowerCase().includes(q) ||
+  //           u.name.toLowerCase().includes(q)
+  //       ),
+  //     }));
+  // }, [mode, query]);
   const filteredUsers = useMemo(() => {
     if (mode !== 'users') return [];
     const q = query.toLowerCase();
-    return MOCK_USERS
-      .filter((u) => u.name.toLowerCase().includes(q))
-      .map((u) => ({
-        ...u,
-        reviews: u.reviews.filter(
-          (r) =>
-            r.title.toLowerCase().includes(q) ||
-            r.snippet.toLowerCase().includes(q) ||
-            u.name.toLowerCase().includes(q)
-        ),
-      }));
-  }, [mode, query]);
+
+    return userResults.map((u) => ({
+      ...u,
+      reviews: (u.reviews || []).filter((r) =>
+        (r.title || '').toLowerCase().includes(q) ||
+        (r.snippet || '').toLowerCase().includes(q) ||
+        u.name.toLowerCase().includes(q)
+      ),
+    }));
+  }, [mode, query, userResults]);
+
 
   const layout = useMemo(
     () => ({
@@ -389,8 +524,8 @@ export default function Search({ user, onLogout }) {
                 mode === 'videos'
                   ? 'Type a video title…'
                   : mode === 'channels'
-                  ? 'Type a channel name…'
-                  : 'Type a username…'
+                    ? 'Type a channel name…'
+                    : 'Type a username…'
               }
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -482,58 +617,67 @@ export default function Search({ user, onLogout }) {
 
           {mode === 'users' && (
             <div style={{ display: 'grid', gap: 12, marginTop: 12 }}>
-                {filteredUsers.map((u) => (
+              {filteredUsers.map((u) => (
                 <div key={u.id} style={layout.vItem}>
-                    <div style={{ width: 60, display: 'grid', placeItems: 'center', fontWeight: 700, background: COLORS.card }}>
+                  <div style={{ width: 60, display: 'grid', placeItems: 'center', fontWeight: 700, background: COLORS.card }}>
                     {u.name.charAt(0)}
-                    </div>
-                    <div style={{ padding: 8, flex: 1 }}>
+                  </div>
+                  <div style={{ padding: 8, flex: 1 }}>
                     <h4 style={layout.metaTitle}>{u.name}</h4>
+                    <div style={{ marginTop: 4 }}>
+                      <button
+                        type="button"
+                        style={layout.reviewBtn}
+                        onClick={() => handleToggleFollow(u.id, u.name)}
+                      >
+                        {isFollowing(u.id) ? 'Unfollow' : 'Follow'}
+                      </button>
+                    </div>
                     <div style={{ ...layout.dim, marginTop: 4 }}>Recent Reviews</div>
                     <ul style={{ marginTop: 6, display: 'grid', gap: 6 }}>
-                        {u.reviews.map((r) => (
+                      {u.reviews.map((r) => (
                         <li key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'space-between' }}>
-                            <div>
+                          <div>
                             <b style={{ cursor: 'pointer' }} onClick={() => navigate(`/review?view=${encodeURIComponent(r.id)}`)}>
-                                {r.title}
+                              {r.title}
                             </b>{' '}
                             <span style={layout.dim}>— {r.snippet}</span>
-                            </div>
-                            <div style={{ display: 'flex', gap: 8 }}>
+                          </div>
+                          <div style={{ display: 'flex', gap: 8 }}>
                             <button
-                                style={layout.reviewBtn}
-                                onClick={() => navigate(`/review?view=${encodeURIComponent(r.id)}&title=${encodeURIComponent(r.title)}&snippet=${encodeURIComponent(r.snippet)}`)}
-                                type="button"
+                              style={layout.reviewBtn}
+                              onClick={() => navigate(`/review?view=${encodeURIComponent(r.id)}&title=${encodeURIComponent(r.title)}&snippet=${encodeURIComponent(r.snippet)}`)}
+                              type="button"
                             >
-                                View ▸
+                              View ▸
                             </button>
                             <button
-                                style={layout.reviewBtn}
-                                onClick={() => navigate(`/review?replyTo=${encodeURIComponent(r.id)}&title=${encodeURIComponent(r.title)}&snippet=${encodeURIComponent(r.snippet)}`)}
-                                type="button"
+                              style={layout.reviewBtn}
+                              onClick={() => navigate(`/review?replyTo=${encodeURIComponent(r.id)}&title=${encodeURIComponent(r.title)}&snippet=${encodeURIComponent(r.snippet)}`)}
+                              type="button"
                             >
-                                Comment 💬
+                              Comment 💬
                             </button>
                             <button
-                                style={layout.reviewBtn}
-                                onClick={() => toggleLikeLocal(r.id)}
-                                type="button"
-                                title={userHasLiked(r.id, user?.id) ? 'Unlike' : 'Like'}
+                              style={layout.reviewBtn}
+                              onClick={() => toggleLike(r.id)}
+                              type="button"
+                              title={userHasLiked(r.id, user?.id) ? 'Unlike' : 'Like'}
                             >
-                                {userHasLiked(r.id, user?.id) ? '♥' : '♡'} {likeCountFor(r.id)}
+                              {userHasLiked(r.id, user?.id) ? '♥' : '♡'} {likeCountFor(r.id)}
                             </button>
-                            </div>
+                          </div>
                         </li>
-                        ))}
+                      ))}
                     </ul>
-                    </div>
+                  </div>
                 </div>
-                ))}
-                {!filteredUsers.length && (
-                <div style={{ color: COLORS.dim, marginTop: 8 }}>No matching users (mock data).</div>
-                )}
+              ))}
+              {!filteredUsers.length && (
+                <div style={{ color: COLORS.dim, marginTop: 8 }}>No matching users.</div>
+              )}
             </div>
-            )}
+          )}
         </div>
 
         <div style={{ textAlign: 'center', color: COLORS.dim, fontSize: 12, marginTop: 10 }}>
