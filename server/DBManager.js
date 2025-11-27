@@ -180,13 +180,15 @@ export class DBManager {
     }
 
     // Creates a review entry
-    async createReviewEntry(_type, _targetId, _rating, _reviewText, _userId) {
+    async createReviewEntry(_type, _targetId, _title, _rating, _reviewText, _userId, _username) {
         const reviewEntry = {};
         reviewEntry.type = _type;
         reviewEntry.targetId = _targetId;
+        reviewEntry.title = _title;
         reviewEntry.rating = _rating;
         reviewEntry.reviewText = _reviewText;
         reviewEntry.userId = _userId;
+        reviewEntry.username = _username;
         reviewEntry.createdAt = new Date().toISOString();
 
         const result = await this.insertCollectionEntry(this.collReview(), reviewEntry);
@@ -195,7 +197,7 @@ export class DBManager {
         return { ...reviewEntry, _id: result.insertedId };
     }
 
-    async getReviewEntries(_type, _targetId, _userId) {
+    async getReviewEntries(_type, _targetId, _title, _rating, _userId, _username) {
         const query = {};
         if (_type !== null) {
             query.type = _type;
@@ -205,12 +207,25 @@ export class DBManager {
             query.targetId = _targetId;
         }
 
+        if (_title !== null) {
+            query.title = _title;
+        }
+
+        if (_rating !== null) {
+            query.rating = _rating;
+        }
+
         if (_userId !== null) {
             query.userId = _userId;
         }
 
+        if (_username !== null) {
+            query.username = _username;
+        }
+
         return await this.queryCollection(this.collReview(), query);
     }
+
 
     async createFriendEntry(_firstID, _secondID, _status) {
         const friendEntry = {};
