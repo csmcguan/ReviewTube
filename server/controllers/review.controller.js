@@ -129,7 +129,7 @@ export const reviewController = {
                 return res.status(400).json({ error: "Missing comment text" });
             }
 
-            const comment = await reviewService.createComment({//Create comment hasn't been implemented yet in service
+            const comment = await reviewService.createComment({ // now implemented!
                 reviewId,
                 text,
                 userId: userId || 1,
@@ -146,10 +146,12 @@ export const reviewController = {
         try {
             const { reviewId } = req.params;
 
-            const comments = await reviewService.getComments(reviewId);//get comments hasn't been implemented yet in service
+            console.log("Fetching comments for reviewId:", reviewId);
+            const comments = await reviewService.getComments(reviewId); // now implemented!
 
             return res.status(200).json(comments);
         } catch (err) {
+            console.error("Get review comments error:", err);
             console.error("Get review comments error:", err);
             next(err);
         }

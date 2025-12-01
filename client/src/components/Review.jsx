@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { postVideoReview, postReviewComment, getVideoDetails } from '../services/reviewsApi';
+import { postVideoReview, postReviewComment, getVideoDetails, getReviewComments } from '../services/reviewsApi';
 import { getVideoReviews } from '../services/reviewsApi';
 import { likeReview, unlikeReview, getReviewLikes } from '../services/likesApi';
 
@@ -18,25 +18,25 @@ const COLORS = {
 };
 
 // async function ytVideoDetails(videoId) {
-  // const key = process.env.REACT_APP_YT_API_KEY;
-  // if (!key || !videoId) return null;
-  // const params = new URLSearchParams({
-  //   part: 'snippet',
-  //   id: videoId,
-  //   key,
-  //   maxResults: 1,
-  // });
-  // const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?${params}`);
-  // if (!res.ok) return null;
-  // const data = await res.json();
-  // const it = data.items?.[0];
-  // if (!it) return null;
-  // return {
-  //   id: videoId,
-  //   title: it.snippet.title,
-  //   channel: it.snippet.channelTitle,
-  //   thumb: it.snippet.thumbnails?.medium?.url || it.snippet.thumbnails?.default?.url,
-  // };
+// const key = process.env.REACT_APP_YT_API_KEY;
+// if (!key || !videoId) return null;
+// const params = new URLSearchParams({
+//   part: 'snippet',
+//   id: videoId,
+//   key,
+//   maxResults: 1,
+// });
+// const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?${params}`);
+// if (!res.ok) return null;
+// const data = await res.json();
+// const it = data.items?.[0];
+// if (!it) return null;
+// return {
+//   id: videoId,
+//   title: it.snippet.title,
+//   channel: it.snippet.channelTitle,
+//   thumb: it.snippet.thumbnails?.medium?.url || it.snippet.thumbnails?.default?.url,
+// };
 // }
 
 // localStorage helpers (Edit later to use backend API)
@@ -106,7 +106,8 @@ export default function Review({ user, onLogout }) {
         const found = all.find(r => String(r._id) === String(replyToId)); // replyToId should be Mongo _id
 
         setParentReview(found || null);
-        setComments(loadComments(replyToId));  // still using local for comments for now
+        const comments = await loadComments(replyToId);
+        setComments(comments);
         if (replyToId) {
           await refreshLikes(replyToId);
         }
@@ -141,18 +142,41 @@ export default function Review({ user, onLogout }) {
     onLogout?.();
     nav('/');
   }
-  function loadComments(parentId) {
-    const all = readJSON('rt_comments', []);
-    return all
-      .filter((c) => c.parentReviewId === parentId)
-      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  async function loadComments(parentId) {
+    // USE BACKEND
+    // const all = readJSON('rt_comments', []);
+    // return all
+    //   .filter((c) => c.parentReviewId === parentId)
+    //   .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    if (!parentId) return [];
+
+    try {
+      const rows = await getReviewComments(parentId);
+
+      return rows
+        .map((row) => ({
+          id: row._id || row.id,
+          parentReviewId: row.reviewID || parentId,
+          author: {
+            id: row.userID ?? null,
+            name: row.name,
+            email: null,
+          },
+          text: row.comment,
+          createdAt: row.createdAt || row.dateCreated || new Date().toISOString(),
+        }))
+        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    } catch (err) {
+      console.error('Failed to load comments:', err);
+      return [];
+    }
   }
 
-  function saveReviewOrComment() {
+  async function saveReviewOrComment() {
     const now = new Date().toISOString();
     if (replyToId) {
       // comment on an existing review
-      const comments = readJSON('rt_comments', []);
+      //const comments = readJSON('rt_comments', []);
       const comment = {
         id: `c_${Date.now()}`,
         parentReviewId: replyToId,
@@ -160,9 +184,11 @@ export default function Review({ user, onLogout }) {
         text,
         createdAt: now,
       };
-      comments.push(comment);
-      writeJSON('rt_comments', comments);
-      setComments(loadComments(replyToId));   // refresh UI
+      //comments.push(comment);
+      //writeJSON('rt_comments', comments);
+      //setComments(loadComments(replyToId));   // refresh UI
+      const comments = await loadComments(replyToId);
+      setComments(comments);
       return { ok: true, type: 'comment', id: comment.id };
     } else {
       // new review
@@ -230,6 +256,10 @@ export default function Review({ user, onLogout }) {
 
         // mirror to local storage if we want to
         // const resLocal = saveReviewOrComment();
+
+        // refresh
+        const comments = await loadComments(replyToId);
+        setComments(comments);
 
         setMsg('Comment posted!');
         setText('');

@@ -101,7 +101,7 @@ export const reviewService = {
 
         const data = await resp.json();
         const it = data.items?.[0];
-        if (!it) {  
+        if (!it) {
             console.error("No video found for ID:", videoId);
             return null;
         }
@@ -114,5 +114,33 @@ export const reviewService = {
             channel: it.snippet.channelTitle,
             thumb: it.snippet.thumbnails?.medium?.url || it.snippet.thumbnails?.default?.url,
         };
+    },
+
+    async createComment({ reviewId, userId, text }) {
+        console.log("Creating comment:", { reviewId, userId, text });
+
+        if (!reviewId || !text) {
+            console.error("Missing reviewId or text for comment");
+            throw new Error("Missing reviewId or text for comment");
+        }
+
+        const db = new DBManager();
+        await db.createCommentEntry(reviewId, userId ?? null, text);
+        console.log("Comment created successfully");
+
+        return {
+            ok: true,
+            reviewId,
+            userId: userId ?? null,
+            text,
+        };
+    },
+
+    // get the comments for a review
+    async getComments(reviewId) {
+        console.log("Getting comments for reviewId:", reviewId);
+        const db = new DBManager();
+        const rows = await db.getCommentEntries(reviewId ?? null, null, null);
+        return rows || [];
     },
 };

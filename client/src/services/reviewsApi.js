@@ -70,6 +70,18 @@ export async function getVideoDetails(videoId) {
   return res.json();
 }
 
+// get the comments for a review
+export async function getReviewComments(reviewId) {
+  const res = await fetch(`${API_BASE}/reviews/${encodeURIComponent(reviewId)}/comments`);
+
+  if (!res.ok) {
+    const err = await res.text().catch(() => "");
+    throw new Error(`Failed to load comments: ${res.status} ${err}`);
+  }
+
+  return res.json(); // array of raw comment rows from backend
+}
+
 // *** feed exists under the users router, so moved this to usersApi.js ***
 // export async function getFeedReviews() {
 //   const res = await fetch(`${API_BASE}/reviews/feed`);
