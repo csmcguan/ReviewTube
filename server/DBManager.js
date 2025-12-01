@@ -51,7 +51,7 @@ export class DBManager {
 
     // check if reviewtube collections exists and if not create them
     async checkCollections() {
-        const collections = [this.collUser(), this.collReview(), this.collFriends(), this.collLikes()];
+        const collections = [this.collUser(), this.collReview(), this.collFriends(), this.collLikes(), this.collComments()];
         const dbCollections = await this.database.listCollections().toArray();
 
         for (var i = 0; i < collections.length; i++) {
@@ -314,6 +314,39 @@ export class DBManager {
             query.comment = _comment;
         }
         return await this.queryCollection(this.collComments(), query);
+    }
+
+    async testInsertEntry()
+    {
+        await this.deleteLikeEntries(0, 0);
+
+        await this.createLikeEntry(0, 0);
+
+        var arr = await this.getLikeEntries(0, 0);
+
+        return (arr.length !== 0);
+    }
+
+    async testDeleteEntry()
+    {
+        await this.createLikeEntry(0, 0);
+
+        await this.deleteLikeEntries(0, 0);
+
+        var arr = await this.getLikeEntries(0, 0);
+
+        return (arr.length === 0);
+    }
+
+    async testUpdateEntry()
+    {
+        await this.createFriendEntry(0, 0, "testing");
+
+        await this.updateFriendEntries(0, 0, "tested");
+
+        var arr = await this.getFriendEntries(0, 0, "tested");
+
+        return (arr.length !== 0);
     }
 
     // slice Array is a wrapper around javascript slice
