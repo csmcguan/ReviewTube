@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { postVideoReview, postReviewComment } from '../services/reviewsApi';
+import { postVideoReview, postReviewComment, getVideoDetails } from '../services/reviewsApi';
 import { getVideoReviews } from '../services/reviewsApi';
 import { likeReview, unlikeReview, getReviewLikes } from '../services/likesApi';
 
@@ -17,27 +17,27 @@ const COLORS = {
   soft: '#151619',
 };
 
-async function ytVideoDetails(videoId) {
-  const key = process.env.REACT_APP_YT_API_KEY;
-  if (!key || !videoId) return null;
-  const params = new URLSearchParams({
-    part: 'snippet',
-    id: videoId,
-    key,
-    maxResults: 1,
-  });
-  const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?${params}`);
-  if (!res.ok) return null;
-  const data = await res.json();
-  const it = data.items?.[0];
-  if (!it) return null;
-  return {
-    id: videoId,
-    title: it.snippet.title,
-    channel: it.snippet.channelTitle,
-    thumb: it.snippet.thumbnails?.medium?.url || it.snippet.thumbnails?.default?.url,
-  };
-}
+// async function ytVideoDetails(videoId) {
+  // const key = process.env.REACT_APP_YT_API_KEY;
+  // if (!key || !videoId) return null;
+  // const params = new URLSearchParams({
+  //   part: 'snippet',
+  //   id: videoId,
+  //   key,
+  //   maxResults: 1,
+  // });
+  // const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?${params}`);
+  // if (!res.ok) return null;
+  // const data = await res.json();
+  // const it = data.items?.[0];
+  // if (!it) return null;
+  // return {
+  //   id: videoId,
+  //   title: it.snippet.title,
+  //   channel: it.snippet.channelTitle,
+  //   thumb: it.snippet.thumbnails?.medium?.url || it.snippet.thumbnails?.default?.url,
+  // };
+// }
 
 // localStorage helpers (Edit later to use backend API)
 const readJSON = (k, fallback) => {
@@ -65,64 +65,64 @@ export default function Review({ user, onLogout }) {
   const [likes, setLikes] = useState([]);
   const [liked, setLiked] = useState(false);
   const refreshLikes = useCallback(
-  async (id) => {
-    if (!id) return;
-    try {
-      const data = await getReviewLikes(id); 
-      const arr = data?.userIds || [];
-      setLikes(arr);
-      if (user?.id) {
-        setLiked(arr.includes(user.id));
-      } else {
+    async (id) => {
+      if (!id) return;
+      try {
+        const data = await getReviewLikes(id);
+        const arr = data?.userIds || [];
+        setLikes(arr);
+        if (user?.id) {
+          setLiked(arr.includes(user.id));
+        } else {
+          setLiked(false);
+        }
+      } catch (err) {
+        console.error('Failed to load likes for review', id, err);
+        setLikes([]);
         setLiked(false);
       }
-    } catch (err) {
-      console.error('Failed to load likes for review', id, err);
-      setLikes([]);
-      setLiked(false);
-    }
-  },
-  [user?.id]
-);
+    },
+    [user?.id]
+  );
 
   useEffect(() => {
     (async () => {
       if (videoId) {
-        const d = await ytVideoDetails(videoId);
+        const d = await getVideoDetails(videoId);
         setSelected(d || { id: videoId });
       }
     })();
   }, [videoId]);
 
   useEffect(() => {
-  if (!replyToId) return;
+    if (!replyToId) return;
 
-  async function loadParentFromBackend() {
-    try {
-      const vid = videoId || selected?.id;
-      if (!vid) return;
+    async function loadParentFromBackend() {
+      try {
+        const vid = videoId || selected?.id;
+        if (!vid) return;
 
-      const all = await getVideoReviews({ videoId: vid });
-      const found = all.find(r => String(r._id) === String(replyToId)); // replyToId should be Mongo _id
+        const all = await getVideoReviews({ videoId: vid });
+        const found = all.find(r => String(r._id) === String(replyToId)); // replyToId should be Mongo _id
 
-      setParentReview(found || null);
-      setComments(loadComments(replyToId));  // still using local for comments for now
-      if (replyToId) {
-        await refreshLikes(replyToId);
+        setParentReview(found || null);
+        setComments(loadComments(replyToId));  // still using local for comments for now
+        if (replyToId) {
+          await refreshLikes(replyToId);
+        }
+
+        if (found?.targetId && !videoId) {
+          getVideoDetails(found.targetId).then(d =>
+            setSelected(d || { id: found.targetId })
+          );
+        }
+      } catch (err) {
+        console.error("Failed to load parent review:", err);
       }
-
-      if (found?.targetId && !videoId) {
-        ytVideoDetails(found.targetId).then(d =>
-          setSelected(d || { id: found.targetId })
-        );
-      }
-    } catch (err) {
-      console.error("Failed to load parent review:", err);
     }
-  }
 
-  loadParentFromBackend();
-}, [replyToId, videoId, selected?.id, refreshLikes]);
+    loadParentFromBackend();
+  }, [replyToId, videoId, selected?.id, refreshLikes]);
 
 
   const layout = useMemo(() => ({
@@ -134,126 +134,142 @@ export default function Review({ user, onLogout }) {
     input: { width: '100%', background: COLORS.soft, border: `1px solid ${COLORS.border}`, color: COLORS.text, borderRadius: 8, padding: '10px 12px' },
     textarea: { width: '95%', minHeight: 140, background: COLORS.soft, border: `1px solid ${COLORS.border}`, color: COLORS.text, borderRadius: 8, padding: '10px 12px', resize: 'vertical' },
     btn: { padding: '10px 16px', background: COLORS.accent, border: 'none', color: '#fff', fontWeight: 600, borderRadius: 8, cursor: 'pointer' },
-    reviewBtn: {padding: '6px 10px',borderRadius: 6,border: `1px solid ${COLORS.border}`,background: COLORS.card,color: COLORS.text,cursor: 'pointer',fontSize: 12,fontWeight: 600,},
+    reviewBtn: { padding: '6px 10px', borderRadius: 6, border: `1px solid ${COLORS.border}`, background: COLORS.card, color: COLORS.text, cursor: 'pointer', fontSize: 12, fontWeight: 600, },
   }), []);
 
   function handleLogout() {
     onLogout?.();
     nav('/');
   }
-function loadComments(parentId) {
+  function loadComments(parentId) {
     const all = readJSON('rt_comments', []);
     return all
-        .filter((c) => c.parentReviewId === parentId)
-        .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
-}
-
-function saveReviewOrComment() {
-  const now = new Date().toISOString();
-  if (replyToId) {
-    // comment on an existing review
-    const comments = readJSON('rt_comments', []);
-    const comment = {
-      id: `c_${Date.now()}`,
-      parentReviewId: replyToId,
-      author: { id: user?.id, name: user?.name, email: user?.email },
-      text,
-      createdAt: now,
-    };
-    comments.push(comment);
-    writeJSON('rt_comments', comments);
-    setComments(loadComments(replyToId));   // refresh UI
-    return { ok: true, type: 'comment', id: comment.id };
-  } else {
-    // new review
-    const reviews = readJSON('rt_reviews', []);
-    const review = {
-      id: `r_${Date.now()}`,
-      author: { id: user?.id, name: user?.name, email: user?.email },
-      videoId: selected?.id || null,
-      rating,
-      text,
-      createdAt: now,
-    };
-    reviews.push(review);
-    writeJSON('rt_reviews', reviews);
-    return { ok: true, type: 'review', id: review.id };
+      .filter((c) => c.parentReviewId === parentId)
+      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
   }
-}
+
+  function saveReviewOrComment() {
+    const now = new Date().toISOString();
+    if (replyToId) {
+      // comment on an existing review
+      const comments = readJSON('rt_comments', []);
+      const comment = {
+        id: `c_${Date.now()}`,
+        parentReviewId: replyToId,
+        author: { id: user?.id, name: user?.name, email: user?.email },
+        text,
+        createdAt: now,
+      };
+      comments.push(comment);
+      writeJSON('rt_comments', comments);
+      setComments(loadComments(replyToId));   // refresh UI
+      return { ok: true, type: 'comment', id: comment.id };
+    } else {
+      // new review
+      const reviews = readJSON('rt_reviews', []);
+      const review = {
+        id: `r_${Date.now()}`,
+        author: { id: user?.id, name: user?.name, email: user?.email },
+        videoId: selected?.id || null,
+        rating,
+        text,
+        createdAt: now,
+      };
+      reviews.push(review);
+      writeJSON('rt_reviews', reviews);
+      return { ok: true, type: 'review', id: review.id };
+    }
+  }
 
   async function toggleLike() {
-  if (!replyToId || !user?.id) return;
+    if (!replyToId || !user?.id) return;
 
-  const already = liked;
+    const already = liked;
 
-  try {
-    if (already) {
-      await unlikeReview({ reviewId: replyToId, userId: user.id });
-    } else {
-      await likeReview({ reviewId: replyToId, userId: user.id });
-    }
-
-    // Optimistic local update
-    setLikes((prev) => {
-      const current = prev || [];
-      let next;
+    try {
       if (already) {
-        next = current.filter((id) => id !== user.id);
+        await unlikeReview({ reviewId: replyToId, userId: user.id });
       } else {
-        next = current.includes(user.id) ? current : [...current, user.id];
+        await likeReview({ reviewId: replyToId, userId: user.id });
       }
-      return next;
-    });
-    setLiked(!already);
-  } catch (err) {
-    console.error('Failed to toggle like:', err);
+
+      // Optimistic local update
+      setLikes((prev) => {
+        const current = prev || [];
+        let next;
+        if (already) {
+          next = current.filter((id) => id !== user.id);
+        } else {
+          next = current.includes(user.id) ? current : [...current, user.id];
+        }
+        return next;
+      });
+      setLiked(!already);
+    } catch (err) {
+      console.error('Failed to toggle like:', err);
+    }
   }
-}
 
 
   async function handlePost() {
     if (!text.trim()) { setMsg('Please write something.'); return; }
     if (!replyTo && !selected?.id) { setMsg('Please select a video from Search first.'); return; }
     if (!user?.id) {
-    setMsg('You must be logged in to post.');
-    return;
-  }
-  setSaving(true);
-  try {
-    if (replyToId) {
-      // Comment on existing review via backend
-      const result = await postReviewComment({
-        reviewId: replyToId,
-        userId: user.id,
-        text,
-      });
-
-      // mirror to local storage if we want to
-      // const resLocal = saveReviewOrComment();
-
-      setMsg('Comment posted!');
-      setText('');
-      
-    } else {
-      // New review via backend
-      const result = await postVideoReview({
-        videoId: selected?.id,
-        userId: user.id,
-        rating,
-        text,
-      });
-
-      setMsg('Review posted!');
-      setText('');
+      setMsg('You must be logged in to post.');
+      return;
     }
+    setSaving(true);
+    try {
+      if (replyToId) {
+        // Comment on existing review via backend
+        const result = await postReviewComment({
+          reviewId: replyToId,
+          userId: user.id,
+          text,
+        });
 
-    setTimeout(() => setMsg(''), 1200);
-  } catch (err) {
-    console.error(err);
-    setMsg('Failed to post.');
-  } finally {
-    setSaving(false);
-  }
+        // mirror to local storage if we want to
+        // const resLocal = saveReviewOrComment();
+
+        setMsg('Comment posted!');
+        setText('');
+
+      } else {
+        // New review via backend
+        const videoTitle =
+          selected?.title ||
+          selected?.snippet?.title ||
+          selected?.videoTitle ||
+          selected?.name ||
+          null;
+
+        const videoId =
+          selected?.id ||
+          selected?.videoId ||
+          null;
+
+        const authorName = user.name || null;
+
+        const result = await postVideoReview({
+          videoId,
+          userId: user.id,
+          rating,
+          text,
+          videoTitle,
+          authorName,
+        });
+
+        setMsg('Review posted!');
+        setText('');
+      }
+
+      setTimeout(() => setMsg(''), 1200);
+    } catch (err) {
+      console.error(err);
+      setMsg('Failed to post.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   // Sidebar hover states (just Home/Profile/Logout clickable here)
@@ -271,26 +287,26 @@ function saveReviewOrComment() {
         </div>
 
         <div style={{ ...layout.sideItem(false), background: hHome ? COLORS.card : 'transparent', transition: 'background .2s' }}
-             onMouseEnter={() => setHHome(true)} onMouseLeave={() => setHHome(false)}
-             onClick={() => nav('/home')} role="button" tabIndex={0}
-             onKeyDown={(e) => e.key === 'Enter' && nav('/home')}>Home</div>
+          onMouseEnter={() => setHHome(true)} onMouseLeave={() => setHHome(false)}
+          onClick={() => nav('/home')} role="button" tabIndex={0}
+          onKeyDown={(e) => e.key === 'Enter' && nav('/home')}>Home</div>
 
         <div style={{ ...layout.sideItem(false), background: hSearch ? COLORS.card : 'transparent', transition: 'background .2s' }}
-             onMouseEnter={() => setHSearch(true)} onMouseLeave={() => setHSearch(false)}
-             onClick={() => nav('/search')} role="button" tabIndex={0}
-             onKeyDown={(e) => e.key === 'Enter' && nav('/search')}>Search</div>
+          onMouseEnter={() => setHSearch(true)} onMouseLeave={() => setHSearch(false)}
+          onClick={() => nav('/search')} role="button" tabIndex={0}
+          onKeyDown={(e) => e.key === 'Enter' && nav('/search')}>Search</div>
 
         <div style={{ ...layout.sideItem(true), background: COLORS.card }}>Review</div>
 
         <div style={{ ...layout.sideItem(false), background: hProfile ? COLORS.card : 'transparent', transition: 'background .2s' }}
-             onMouseEnter={() => setHProfile(true)} onMouseLeave={() => setHProfile(false)}
-             onClick={() => nav('/profile')} role="button" tabIndex={0}
-             onKeyDown={(e) => e.key === 'Enter' && nav('/profile')}>Profile</div>
+          onMouseEnter={() => setHProfile(true)} onMouseLeave={() => setHProfile(false)}
+          onClick={() => nav('/profile')} role="button" tabIndex={0}
+          onKeyDown={(e) => e.key === 'Enter' && nav('/profile')}>Profile</div>
 
         <div style={{ ...layout.sideItem(false), background: hLogout ? COLORS.card : 'transparent', transition: 'background .2s' }}
-             onMouseEnter={() => setHLogout(true)} onMouseLeave={() => setHLogout(false)}
-             onClick={handleLogout} role="button" tabIndex={0}
-             onKeyDown={(e) => e.key === 'Enter' && handleLogout()}>Logout</div>
+          onMouseEnter={() => setHLogout(true)} onMouseLeave={() => setHLogout(false)}
+          onClick={handleLogout} role="button" tabIndex={0}
+          onKeyDown={(e) => e.key === 'Enter' && handleLogout()}>Logout</div>
 
         <div style={{ marginTop: 'auto', paddingTop: 8, borderTop: `1px solid ${COLORS.border}`, display: 'flex', gap: 10, alignItems: 'center' }}>
           <div style={{ width: 36, height: 36, borderRadius: 999, background: COLORS.card, display: 'grid', placeItems: 'center', fontWeight: 700 }}>
@@ -339,30 +355,30 @@ function saveReviewOrComment() {
                   <div style={{ color: COLORS.dim, fontSize: 12 }}>{selected.channel}</div>
                 </div>
               </div>
-              ) : replyToId && (fallbackTitle || fallbackSnippet) ? (
-                // Fallback when coming from Users tab (mock data), no saved review yet
-                <div>
+            ) : replyToId && (fallbackTitle || fallbackSnippet) ? (
+              // Fallback when coming from Users tab (mock data), no saved review yet
+              <div>
                 <div style={{ fontWeight: 600, marginBottom: 6 }}>
-                {fallbackTitle || '(untitled)'}
+                  {fallbackTitle || '(untitled)'}
                 </div>
                 {fallbackSnippet && (
-                <div style={{ color: COLORS.dim }}>
+                  <div style={{ color: COLORS.dim }}>
                     {fallbackSnippet}
-                </div>
+                  </div>
                 )}
-            </div>
+              </div>
             ) : (
               <div style={{ color: COLORS.dim }}>No video selected</div>
             )}
             {replyToId && parentReview && (
-                <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
-                    <button onClick={toggleLike} style={layout.reviewBtn} type="button">
-                    {liked ? '♥ Liked' : '♡ Like'} • {likes.length}
-                    </button>
-                    <a href="#composer" style={{ ...layout.dim, textDecoration: 'none' }}>
-                    Add comment
-                    </a>
-                </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                <button onClick={toggleLike} style={layout.reviewBtn} type="button">
+                  {liked ? '♥ Liked' : '♡ Like'} • {likes.length}
+                </button>
+                <a href="#composer" style={{ ...layout.dim, textDecoration: 'none' }}>
+                  Add comment
+                </a>
+              </div>
             )}
           </div>
 
@@ -375,7 +391,7 @@ function saveReviewOrComment() {
                 onChange={(e) => setRating(Number(e.target.value))}
                 style={{ ...layout.input, width: 120 }}
               >
-                {[5,4,3,2,1].map(n => (
+                {[5, 4, 3, 2, 1].map(n => (
                   <option key={n} value={n}>
                     {'★'.repeat(n)}{n < 5 ? ` (${n})` : ' (5)'}
                   </option>
@@ -408,29 +424,29 @@ function saveReviewOrComment() {
 
         {/* Comments thread*/}
         {replyTo && parentReview && (
-            <div style={{ ...layout.card, marginTop: 16 }}>
+          <div style={{ ...layout.card, marginTop: 16 }}>
             <div style={{ fontWeight: 700, marginBottom: 8 }}>
-                Comments ({comments.length})
+              Comments ({comments.length})
             </div>
 
             {comments.length === 0 ? (
-                <div style={{ color: COLORS.dim }}>No comments yet.</div>
+              <div style={{ color: COLORS.dim }}>No comments yet.</div>
             ) : (
-                <div style={{ display: 'grid', gap: 10 }}>
+              <div style={{ display: 'grid', gap: 10 }}>
                 {comments.map((c) => (
-                    <div
+                  <div
                     key={c.id}
                     style={{
-                        background: COLORS.soft,
-                        border: `1px solid ${COLORS.border}`,
-                        borderRadius: 8,
-                        padding: 10,
-                        display: 'flex',
-                        gap: 10,
+                      background: COLORS.soft,
+                      border: `1px solid ${COLORS.border}`,
+                      borderRadius: 8,
+                      padding: 10,
+                      display: 'flex',
+                      gap: 10,
                     }}
-                    >
+                  >
                     <div
-                        style={{
+                      style={{
                         width: 32,
                         height: 32,
                         borderRadius: 999,
@@ -438,26 +454,26 @@ function saveReviewOrComment() {
                         display: 'grid',
                         placeItems: 'center',
                         fontWeight: 700,
-                        }}
+                      }}
                     >
-                        {(c.author?.name || 'A')[0]}
+                      {(c.author?.name || 'A')[0]}
                     </div>
                     <div>
-                        <div style={{ fontWeight: 600 }}>
+                      <div style={{ fontWeight: 600 }}>
                         {c.author?.name || 'Anonymous'}
                         <span
-                            style={{ marginLeft: 8, color: COLORS.dim, fontSize: 12 }}
+                          style={{ marginLeft: 8, color: COLORS.dim, fontSize: 12 }}
                         >
-                            {new Date(c.createdAt).toLocaleString()}
+                          {new Date(c.createdAt).toLocaleString()}
                         </span>
-                        </div>
-                        <div style={{ whiteSpace: 'pre-wrap' }}>{c.text}</div>
+                      </div>
+                      <div style={{ whiteSpace: 'pre-wrap' }}>{c.text}</div>
                     </div>
-                    </div>
+                  </div>
                 ))}
-                </div>
+              </div>
             )}
-            </div>
+          </div>
         )}
         <div style={{ textAlign: 'center', color: COLORS.dim, fontSize: 12, marginTop: 10 }}>
           Alpha Prototype.

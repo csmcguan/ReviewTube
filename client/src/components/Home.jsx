@@ -117,10 +117,10 @@ export default function Home({ user, onLogout }) {
           id: String(r._id || r.id),
           author: {
             id: r.userId,
-            name: r.authorName || `User ${r.userId}`,
+            name: r.username || r.authorName || `User ${r.userId}`,
             email: '',
           },
-          videoTitle: r.videoTitle || r.targetId,
+          videoTitle: r.title || r.videoTitle || r.targetId,
           rating: r.rating,
           text: r.reviewText,
           createdAt: r.createdAt || new Date().toISOString(),

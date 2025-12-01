@@ -191,11 +191,13 @@ export const userService = {
             // 3. shape reviews for the UI
             const shapedReviews = recent.map((r) => {
                 const baseTitle =
-                    r.type === "video"
-                        ? `Review on video ${r.targetId}`
-                        : r.type === "channel"
-                            ? `Review on channel ${r.targetId}`
-                            : "Review";
+                    r.title
+                        ? r.title
+                        : r.type === "video"
+                            ? `Review on video ${r.targetId}`
+                            : r.type === "channel"
+                                ? `Review on channel ${r.targetId}`
+                                : "Review";
 
                 const text = r.reviewText || "";
                 const snippet =

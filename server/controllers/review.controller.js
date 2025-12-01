@@ -9,7 +9,7 @@ export const reviewController = {
     async writeVideoReview(req, res, next) {
         try {
             const { videoId } = req.params;
-            const { rating, reviewText, userId } = req.body;
+            const { rating, reviewText, userId, videoTitle, authorName } = req.body;
 
             if (!rating || !reviewText) {
                 console.error("No review data given");
@@ -21,12 +21,22 @@ export const reviewController = {
                 return res.status(400).json({ error: "Rating out of bounds" });
             }
 
+            if (!videoTitle) {
+                console.error("Missing video title");
+            }
+
+            if (!authorName) {
+                console.error("Missing author name");
+            }
+
             await reviewService.createReview({
                 type: "video",
                 targetId: videoId,
+                title: videoTitle ?? null,
                 rating,
-                reviewText: reviewText,
-                userId: userId
+                reviewText,
+                userId,
+                username: authorName ?? null,
             });
 
             return res.status(201).json({ ok: true });
@@ -209,12 +219,29 @@ export const reviewController = {
 
             // call service to get likes
             const data = await reviewService.getReviewLikes(reviewId);
-            
+
             // return userIds and count
             return res.json({ userIds: data.userIds, count: data.count });
         } catch (err) {
             console.error("Get review likes error:", err);
             next(err);
         }
-    }
+    },
+
+    async getVideoDetails(req, res, next) {
+        try {
+            const { videoId } = req.params;
+            const meta = await reviewService.fetchVideoDetails(videoId);
+
+            if (!meta) {
+                console.error("Video not found or metadata unavailable for ID:", videoId);
+                return res.status(404).json({ error: "Video not found or metadata unavailable" });
+            }
+
+            return res.json(meta);
+        } catch (err) {
+            console.error("Get video details error:", err);
+            next(err);
+        }
+    },
 };

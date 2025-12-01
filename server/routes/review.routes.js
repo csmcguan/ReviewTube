@@ -5,35 +5,35 @@ const router = express.Router();
 
 // video reviews
 router.post(
-    "/video/:videoId",
-    reviewController.writeVideoReview
+  "/video/:videoId",
+  reviewController.writeVideoReview
 );
 
 router.get(
-    "/video/:videoId",
-    reviewController.getVideoReviews
+  "/video/:videoId",
+  reviewController.getVideoReviews
 );
 
 // channel reviews
 router.post(
-    "/channel/:channelId",
-    reviewController.writeChannelReview
+  "/channel/:channelId",
+  reviewController.writeChannelReview
 );
 
 router.get(
-    "/channel/:channelId",
-    reviewController.getChannelReviews
+  "/channel/:channelId",
+  reviewController.getChannelReviews
 );
 
 // comments
 router.post(
-    "/:reviewId/comments",
-    reviewController.postReviewComment
+  "/:reviewId/comments",
+  reviewController.postReviewComment
 );
 
 router.get(
-    "/:reviewId/comments",
-    reviewController.getReviewComments
+  "/:reviewId/comments",
+  reviewController.getReviewComments
 );
 
 // Likes
@@ -51,5 +51,8 @@ router.get(
   "/:reviewId/likes",
   reviewController.getReviewLikes  // now implemented!
 );
+
+// get details about a video
+router.get("/video/:videoId/details", reviewController.getVideoDetails);
 
 export default router
