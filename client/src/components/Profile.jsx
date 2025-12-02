@@ -29,17 +29,21 @@ export default function Profile({ user, onLogout }) {
       // Load profile (bio) from backend
       const profile = await getProfile(user.id); // expect { bio, ... }
       setBio(profile?.bio || '');
+      } catch (err) {
+      console.error('Failed to load profile:', err);
 
-      // Load friends/following from backend
-      const following = await getFollowing(user.id); // [{ id, name }, ...]
-      setFriends(following || []);
-    } catch (err) {
-      console.error('Failed to load profile/friends:', err);
-
-      //  localStorage bio if backend not ready
       const key = user?.email ? `rt_profile_${user.email}` : 'rt_profile';
       const saved = localStorage.getItem(key);
       if (saved) setBio(saved);
+      }
+
+      // Load friends/following from backend
+      try{
+      const following = await getFollowing(user.id); // [{ id, name }, ...]
+      setFriends(following || []);
+      } catch (err) {
+      console.error('Failed to load friends:', err);
+      setFriends([]);
     }
   }
 
@@ -193,7 +197,7 @@ export default function Profile({ user, onLogout }) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {friends.length ? (
                   friends.map((f) => (
-                  <div key={f} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <div style={{ width: 30, height: 30, borderRadius: 999, background: COLORS.soft, display: 'grid', placeItems: 'center', fontWeight: 700 }}>
                        {(f.name || f.id || 'U').charAt(0)}
                     </div>
@@ -212,7 +216,7 @@ export default function Profile({ user, onLogout }) {
         </div>
 
         <div style={{ textAlign: 'center', color: COLORS.dim, fontSize: 12, marginTop: 10 }}>
-          Alpha Prototype. Profile saved locally for now.
+          Alpha Prototype.
         </div>
       </main>
     </div>
