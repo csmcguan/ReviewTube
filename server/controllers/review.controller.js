@@ -122,7 +122,7 @@ export const reviewController = {
     async postReviewComment(req, res, next) {
         try {
             const { reviewId } = req.params;
-            const { text, userId } = req.body;
+            const { text, userId, username } = req.body;
 
             if (!text) {
                 console.error("Missing comment text");
@@ -132,7 +132,8 @@ export const reviewController = {
             const comment = await reviewService.createComment({ // now implemented!
                 reviewId,
                 text,
-                userId: userId || 1,
+                userId: userId,
+                username
             });
 
             return res.status(201).json(comment);

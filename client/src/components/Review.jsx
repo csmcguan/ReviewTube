@@ -293,6 +293,7 @@ export default function Review({ user, onLogout }) {
           reviewId: replyToId,
           userId: user.id,
           text,
+          username: user.name,
         });
 
         // mirror to local storage if we want to
