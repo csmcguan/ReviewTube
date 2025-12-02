@@ -94,35 +94,49 @@ export default function Review({ user, onLogout }) {
     })();
   }, [videoId]);
 
+  // Load parent review (if possible) + comments + likes
   useEffect(() => {
     if (!replyToId) return;
 
-    async function loadParentFromBackend() {
+    let cancelled = false;
+
+    async function loadAll() {
       try {
+        // likes
+        await refreshLikes(replyToId);
+
+        // parent review + video details
         const vid = videoId || selected?.id;
-        if (!vid) return;
 
-        const all = await getVideoReviews({ videoId: vid });
-        const found = all.find(r => String(r._id) === String(replyToId)); // replyToId should be Mongo _id
+        if (vid) {
+          const all = await getVideoReviews({ videoId: vid });
+          const found = all.find((r) => String(r._id) === String(replyToId));
 
-        setParentReview(found || null);
-        const comments = await loadComments(replyToId);
-        setComments(comments);
-        if (replyToId) {
-          await refreshLikes(replyToId);
-        }
+          if (!cancelled) {
+            setParentReview(found || null);
+          }
 
-        if (found?.targetId && !videoId) {
-          getVideoDetails(found.targetId).then(d =>
-            setSelected(d || { id: found.targetId })
-          );
+          if (found?.targetId && !videoId) {
+            const d = await getVideoDetails(found.targetId);
+            if (!cancelled) {
+              setSelected(d || { id: found.targetId });
+            }
+          }
+        } else {
+          if (!cancelled) {
+            setParentReview(null);
+          }
         }
       } catch (err) {
-        console.error("Failed to load parent review:", err);
+        console.error('Failed to load review/likes:', err);
       }
     }
 
-    loadParentFromBackend();
+    loadAll();
+
+    return () => {
+      cancelled = true;
+    };
   }, [replyToId, videoId, selected?.id, refreshLikes]);
 
 
@@ -151,9 +165,11 @@ export default function Review({ user, onLogout }) {
     if (!parentId) return [];
 
     try {
+      console.log('loadComments() called with parentId:', parentId);
       const rows = await getReviewComments(parentId);
+      console.log('rows from backend:', rows);
 
-      return rows
+      const mapped = rows
         .map((row) => ({
           id: row._id || row.id,
           parentReviewId: row.reviewID || parentId,
@@ -166,11 +182,36 @@ export default function Review({ user, onLogout }) {
           createdAt: row.createdAt || row.dateCreated || new Date().toISOString(),
         }))
         .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+      console.log('mapped comments:', mapped);
+      return mapped;
     } catch (err) {
       console.error('Failed to load comments:', err);
       return [];
     }
   }
+
+  // Always load comments when we know which review we're looking at
+  useEffect(() => {
+    if (!replyToId) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const loaded = await loadComments(replyToId);
+        if (!cancelled) {
+          setComments(loaded);
+        }
+      } catch (err) {
+        console.error('Failed to load comments on mount:', err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [replyToId]);
 
   async function saveReviewOrComment() {
     const now = new Date().toISOString();
@@ -357,10 +398,10 @@ export default function Review({ user, onLogout }) {
           {/* Selected video (if any) or parent review */}
           <div style={{ background: COLORS.soft, border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: 12, marginBottom: 12 }}>
             <div style={{ color: COLORS.dim, marginBottom: 6 }}>
-              {replyTo ? 'Viewing Review' : 'Selected Video'}
+              {replyToId ? 'Viewing Review' : 'Selected Video'}
             </div>
 
-            {replyTo && parentReview ? (
+            {replyToId && parentReview ? (
               <div>
                 <div style={{ fontWeight: 700, marginBottom: 4 }}>{parentReview.author?.name}</div>
                 <div style={{ color: COLORS.dim, marginBottom: 6 }}>
@@ -453,7 +494,7 @@ export default function Review({ user, onLogout }) {
         </div>
 
         {/* Comments thread*/}
-        {replyTo && parentReview && (
+        {replyToId /*&& parentReview*/ && (
           <div style={{ ...layout.card, marginTop: 16 }}>
             <div style={{ fontWeight: 700, marginBottom: 8 }}>
               Comments ({comments.length})
