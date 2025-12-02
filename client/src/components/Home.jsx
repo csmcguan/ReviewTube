@@ -107,6 +107,11 @@ export default function Home({ user, onLogout }) {
       if (!user?.id) return;
 
       try {
+        // Load who the user follows
+        const rawFollowing = await getFollowing(user.id);
+        setFollowing(rawFollowing || []);
+
+
         const rawReviews = await getFeedReviews(user.id, {
           startIndex: 0,
           count: 50,
@@ -263,25 +268,6 @@ export default function Home({ user, onLogout }) {
       <main style={layout.main}>
         {/* Topbar */}
         <div style={layout.topbar}>
-          <input
-            style={layout.searchInput}
-            placeholder="Search videos or channels…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => (e.key === 'Enter' ? navigate(`/search?q=${encodeURIComponent(query.trim())}`) : null)}
-          />
-          <button
-            onClick={() => navigate(`/search?q=${encodeURIComponent(query.trim())}`)}
-            style={{
-              padding: '10px 16px',
-              borderRadius: 8,
-              border: 'none',
-              background: '#ff0033',
-              color: 'white',
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}>Search</button>
-
           <div style={{ marginLeft: 'auto', fontSize: 13, color: COLORS.dim }}>
             Signed in as <b>{user?.name}</b>
           </div>
