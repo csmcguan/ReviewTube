@@ -588,14 +588,6 @@ export default function Search({ user, onLogout }) {
                       >
                         Review channel ▸
                       </button>
-
-                      <button
-                        style={layout.reviewBtn}
-                        onClick={() => toggleChannelVideos(c.id)}
-                        type="button"
-                      >
-                        {expanded[c.id] ? 'Hide videos' : 'Show videos'}
-                      </button>
                     </div>
 
                     {expanded[c.id] && (
