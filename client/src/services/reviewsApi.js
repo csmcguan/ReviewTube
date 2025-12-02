@@ -21,6 +21,27 @@ export async function postVideoReview({ videoId, userId, rating, text, videoTitl
   return res.json(); // Review created from the controller
 }
 
+export async function postChannelReview({ channelId, userId, rating, text, channelTitle, authorName }) {
+  const res = await fetch(`${API_BASE}/reviews/channel/${encodeURIComponent(channelId)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      rating,
+      reviewText: text,
+      userId,
+      channelTitle,
+      authorName,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text().catch(() => "");
+    throw new Error(`Failed to post review: ${res.status} ${err}`);
+  }
+
+  return res.json(); // Review created from the controller
+}
+
 export async function postReviewComment({ reviewId, userId, text, username }) {
   const res = await fetch(`${API_BASE}/reviews/${encodeURIComponent(reviewId)}/comments`, {
     method: "POST",
@@ -54,6 +75,24 @@ export async function getVideoReviews({ videoId, userId, startIndex, endIndex })
   return res.json(); // Array of reviews from the controller
 }
 
+export async function getChannelReviews({ channelId, userId, startIndex, endIndex }) {
+  const params = new URLSearchParams();
+  if (userId != null) params.set("userId", userId);
+  if (startIndex != null) params.set("startIndex", startIndex);
+  if (endIndex != null) params.set("endIndex", endIndex);
+
+  const res = await fetch(
+    `${API_BASE}/reviews/channel/${encodeURIComponent(channelId)}?${params.toString()}`,
+  );
+
+  if (!res.ok) {
+    const err = await res.text().catch(() => "");
+    throw new Error(`Failed to fetch reviews: ${res.status} ${err}`);
+  }
+
+  return res.json(); // Array of reviews from the controller
+}
+
 export async function getVideoDetails(videoId) {
   if (!videoId) {
     return null;
@@ -61,6 +100,22 @@ export async function getVideoDetails(videoId) {
 
   const res = await fetch(
     `${API_BASE}/reviews/video/${encodeURIComponent(videoId)}/details`
+  );
+
+  if (!res.ok) {
+    return null;
+  }
+
+  return res.json();
+}
+
+export async function getChannelDetails(channelId) {
+  if (!channelId) {
+    return null;
+  }
+
+  const res = await fetch(
+    `${API_BASE}/reviews/channel/${encodeURIComponent(channelId)}/details`
   );
 
   if (!res.ok) {

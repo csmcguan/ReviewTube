@@ -583,6 +583,14 @@ export default function Search({ user, onLogout }) {
                     <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                       <button
                         style={layout.reviewBtn}
+                        onClick={() => navigate(`/review?channel=${encodeURIComponent(c.id)}`)}
+                        type="button"
+                      >
+                        Review channel ▸
+                      </button>
+
+                      <button
+                        style={layout.reviewBtn}
                         onClick={() => toggleChannelVideos(c.id)}
                         type="button"
                       >

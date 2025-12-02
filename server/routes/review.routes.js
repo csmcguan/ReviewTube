@@ -55,4 +55,20 @@ router.get(
 // get details about a video
 router.get("/video/:videoId/details", reviewController.getVideoDetails);
 
+// channel reviews
+router.post(
+  "/channel/:channelId",
+  reviewController.writeChannelReview
+);
+
+router.get(
+  "/channel/:channelId",
+  reviewController.getChannelReviews
+);
+
+router.get(
+  "/channel/:channelId/details",
+  reviewController.getChannelDetails
+);
+
 export default router

@@ -72,20 +72,35 @@ export const reviewController = {
     // write a review for a channel
     async writeChannelReview(req, res, next) {
         try {
-            const { channelId } = req.params;
-            const { rating, reviewText, userId } = req.body;
+            const { videoId } = req.params;
+            const { rating, reviewText, userId, channelName, authorName } = req.body;
 
             if (!rating || !reviewText) {
-                console.error("Missing review content");
-                return res.status(400).json({ error: "Missing review content" });
+                console.error("No review data given");
+                return res.status(400).json({ error: "No review data given" });
+            }
+
+            if (rating && (rating < RATING_MIN || rating > RATING_MAX)) {
+                console.error("Rating out of boundss")
+                return res.status(400).json({ error: "Rating out of bounds" });
+            }
+
+            if (!channelName) {
+                console.error("Missing channel name");
+            }
+
+            if (!authorName) {
+                console.error("Missing author name");
             }
 
             await reviewService.createReview({
-                type: "channel",
-                targetId: channelId,
+                type: "video",
+                targetId: videoId,
+                title: channelName ?? null,
                 rating,
                 reviewText,
-                userId: userId || 1,
+                userId,
+                username: authorName ?? null,
             });
 
             return res.status(201).json({ ok: true });
@@ -98,6 +113,7 @@ export const reviewController = {
     async getChannelReviews(req, res, next) {
         try {
             const { channelId } = req.params;
+            const { userId, startIndex, endIndex } = req.query;
 
             const reviews = await reviewService.getReviews({
                 type: "channel",
@@ -107,9 +123,26 @@ export const reviewController = {
                 endIndex: endIndex !== undefined ? Number(endIndex) : null,
             });
 
-            return res.status(200).json(reviews);
+            return res.json(reviews);
         } catch (err) {
             console.error("Get channel reviews error:", err);
+            next(err);
+        }
+    },
+
+    async getChannelDetails(req, res, next) {
+        try {
+            const { channelId } = req.params;
+            const meta = await reviewService.fetchChannelDetails(channelId);
+
+            if (!meta) {
+                console.error("Channel not found or metadata unavailable for ID:", channelId);
+                return res.status(404).json({ error: "Channel not found or metadata unavailable" });
+            }
+
+            return res.json(meta);
+        } catch (err) {
+            console.error("Get channel details error:", err);
             next(err);
         }
     },
