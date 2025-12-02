@@ -5,7 +5,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --runInBand"
   },
   "author": "",
   "license": "ISC",
@@ -15,5 +15,12 @@
     "express": "^5.1.0",
     "mongodb": "^7.0.0",
     "morgan": "^1.10.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^7.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node"
   }
 }
