@@ -116,8 +116,8 @@ export const reviewService = {
         };
     },
 
-    async createComment({ reviewId, userId, text }) {
-        console.log("Creating comment:", { reviewId, userId, text });
+    async createComment({ reviewId, userId, text, username }) {
+        console.log("Creating comment:", { reviewId, userId, text, username });
 
         if (!reviewId || !text) {
             console.error("Missing reviewId or text for comment");
@@ -125,7 +125,7 @@ export const reviewService = {
         }
 
         const db = new DBManager();
-        await db.createCommentEntry(reviewId, userId ?? null, text);
+        await db.createCommentEntry(reviewId, userId, text, username);
         console.log("Comment created successfully");
 
         return {

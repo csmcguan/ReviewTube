@@ -292,12 +292,16 @@ export class DBManager {
         await coll.deleteMany(query);
     }
 
-    async createCommentEntry(_reviewID, _userID, _comment) {
+    async createCommentEntry(_reviewID, _userID, _comment, _username) {
         const commentEntry = {};
         commentEntry.reviewID = _reviewID;
         commentEntry.userID = _userID;
         commentEntry.comment = _comment;
+        commentEntry.name = _username ?? null;
+        commentEntry.dateCreated = new Date().toISOString();
+
         await this.insertCollectionEntry(this.collComments(), commentEntry);
+        return commentEntry;
     }
 
     async getCommentEntries(_reviewID, _userID, _comment) {
@@ -316,8 +320,7 @@ export class DBManager {
         return await this.queryCollection(this.collComments(), query);
     }
 
-    async testInsertEntry()
-    {
+    async testInsertEntry() {
         await this.deleteLikeEntries(0, 0);
 
         await this.createLikeEntry(0, 0);
@@ -327,8 +330,7 @@ export class DBManager {
         return (arr.length !== 0);
     }
 
-    async testDeleteEntry()
-    {
+    async testDeleteEntry() {
         await this.createLikeEntry(0, 0);
 
         await this.deleteLikeEntries(0, 0);
@@ -338,8 +340,7 @@ export class DBManager {
         return (arr.length === 0);
     }
 
-    async testUpdateEntry()
-    {
+    async testUpdateEntry() {
         await this.createFriendEntry(0, 0, "testing");
 
         await this.updateFriendEntries(0, 0, "tested");

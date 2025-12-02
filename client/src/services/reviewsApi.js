@@ -21,11 +21,11 @@ export async function postVideoReview({ videoId, userId, rating, text, videoTitl
   return res.json(); // Review created from the controller
 }
 
-export async function postReviewComment({ reviewId, userId, text }) {
+export async function postReviewComment({ reviewId, userId, text, username }) {
   const res = await fetch(`${API_BASE}/reviews/${encodeURIComponent(reviewId)}/comments`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text, userId }),
+    body: JSON.stringify({ text, userId, username }),
   });
 
   if (!res.ok) {
