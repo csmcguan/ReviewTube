@@ -1,8 +1,16 @@
 /* eslint-disable no-unused-vars */
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { postVideoReview, postReviewComment, getVideoDetails, getReviewComments } from '../services/reviewsApi';
-import { getVideoReviews } from '../services/reviewsApi';
+import {
+  postVideoReview,
+  postChannelReview,
+  getVideoDetails,
+  getChannelDetails,
+  getVideoReviews,
+  getChannelReviews,
+  postReviewComment,
+  getReviewComments
+} from '../services/reviewsApi';
 import { likeReview, unlikeReview, getReviewLikes } from '../services/likesApi';
 
 
@@ -49,6 +57,7 @@ export default function Review({ user, onLogout }) {
   const nav = useNavigate();
   const qs = new URLSearchParams(useLocation().search);
   const videoId = qs.get('video');       // when reviewing a video
+  const channelId = qs.get('channel');   // when reviewing a channel
   const replyTo = qs.get('replyTo');     // when commenting on an existing review
 
   const [selected, setSelected] = useState(null); // {id,title,channel,thumb}
@@ -86,13 +95,33 @@ export default function Review({ user, onLogout }) {
   );
 
   useEffect(() => {
+    let cancelled = false;
+
     (async () => {
-      if (videoId) {
-        const d = await getVideoDetails(videoId);
-        setSelected(d || { id: videoId });
+      try {
+        if (videoId) {
+          const d = await getVideoDetails(videoId);
+          if (!cancelled) {
+            setSelected({ ...(d || { id: videoId }), kind: 'video' });
+          }
+        } else if (channelId) {
+          const d = await getChannelDetails(channelId);
+          if (!cancelled) {
+            setSelected({ ...(d || { id: channelId }), kind: 'channel' });
+          }
+        }
+      } catch (err) {
+        if (!cancelled) {
+          console.error(err);
+        }
       }
     })();
-  }, [videoId]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [videoId, channelId]);
+
 
   // Load parent review (if possible) + comments + likes
   useEffect(() => {
@@ -105,12 +134,19 @@ export default function Review({ user, onLogout }) {
         // likes
         await refreshLikes(replyToId);
 
-        // parent review + video details
-        const vid = videoId || selected?.id;
+        let reviews = [];
+        let cid = null;
+        let vid = null;
+        if (videoId || selected?.kind === 'video') {
+          vid = videoId || selected?.id;
+          reviews = await getVideoReviews({ videoId: vid });
+        } else if (channelId || selected?.kind === 'channel') {
+          cid = channelId || selected?.id;
+          reviews = await getChannelReviews({ channelId: cid });
+        }
 
-        if (vid) {
-          const all = await getVideoReviews({ videoId: vid });
-          const found = all.find((r) => String(r._id) === String(replyToId));
+        if (cid || vid) {
+          const found = reviews.find((r) => String(r._id) === String(replyToId));
 
           if (!cancelled) {
             setParentReview(found || null);
@@ -307,29 +343,35 @@ export default function Review({ user, onLogout }) {
         setText('');
 
       } else {
-        // New review via backend
-        const videoTitle =
+        const title =
           selected?.title ||
           selected?.snippet?.title ||
           selected?.videoTitle ||
           selected?.name ||
           null;
 
-        const videoId =
-          selected?.id ||
-          selected?.videoId ||
-          null;
-
         const authorName = user.name || null;
 
-        const result = await postVideoReview({
-          videoId,
-          userId: user.id,
-          rating,
-          text,
-          videoTitle,
-          authorName,
-        });
+        let result;
+        if (selected.kind === 'channel' || channelId) {
+          result = await postChannelReview({
+            channelId: selected.id,
+            userId: user.id,
+            rating,
+            text,
+            channelTitle: title,
+            authorName,
+          });
+        } else {
+          result = await postVideoReview({
+            videoId: selected.id,
+            userId: user.id,
+            rating,
+            text,
+            videoTitle: title,
+            authorName,
+          });
+        }
 
         setMsg('Review posted!');
         setText('');
