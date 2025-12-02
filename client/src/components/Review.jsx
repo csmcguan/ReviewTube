@@ -102,16 +102,10 @@ export default function Review({ user, onLogout }) {
 
     async function loadAll() {
       try {
-        // 1) Always load comments first
-        const loadedComments = await loadComments(replyToId);
-        if (!cancelled) {
-          setComments(loadedComments);
-        }
-
-        // 2) Then likes
+        // likes
         await refreshLikes(replyToId);
 
-        // 3) Then (optionally) the parent review + video details
+        // parent review + video details
         const vid = videoId || selected?.id;
 
         if (vid) {
@@ -134,7 +128,7 @@ export default function Review({ user, onLogout }) {
           }
         }
       } catch (err) {
-        console.error('Failed to load review/comments/likes:', err);
+        console.error('Failed to load review/likes:', err);
       }
     }
 
@@ -196,6 +190,28 @@ export default function Review({ user, onLogout }) {
       return [];
     }
   }
+
+  // Always load comments when we know which review we're looking at
+  useEffect(() => {
+    if (!replyToId) return;
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const loaded = await loadComments(replyToId);
+        if (!cancelled) {
+          setComments(loaded);
+        }
+      } catch (err) {
+        console.error('Failed to load comments on mount:', err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [replyToId]);
 
   async function saveReviewOrComment() {
     const now = new Date().toISOString();
