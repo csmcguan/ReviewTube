@@ -28,7 +28,7 @@ You must obtain a YouTube Data API Key from the Google Cloud Console. Store the 
 
 ```sh
 git clone <repo-url>
-cd ReviewTube-main
+cd ReviewTube
 
 cd server
 npm install
