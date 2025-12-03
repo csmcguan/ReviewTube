@@ -65,4 +65,4 @@ Backend: http://localhost:5000
 ./run_prod.sh
 ```
 
-Backend: http://localhost:5000
+http://localhost:5000
